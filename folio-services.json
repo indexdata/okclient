@@ -1,0 +1,224 @@
+{
+  "folios": [
+    {
+      "host": "http://localhost:9130",
+      "accounts": [
+        {
+          "tag": "diku_admin:diku@localhost",
+          "tenant": "diku",
+          "username": "diku_admin"
+        }
+      ]
+    },
+    {
+      "host": "https://folio-snapshot-okapi.dev.folio.org",
+      "accounts": [
+        {
+          "tag": "diku_admin:diku@folio-snapshot",
+          "tenant": "diku",
+          "username": "diku_admin"
+        },
+        {
+          "tag": "super_admin:supertenant@folio-snapshot",
+          "tenant": "supertenant",
+          "username": "super_admin"
+        }
+
+      ]
+    },
+    {
+      "host": "https://cu-test-okapi.folio.indexdata.com",
+      "accounts": [
+        {
+          "tag": "id_admin:id_admin@cu-test",
+          "tenant": "cu",
+          "username": "id_admin",
+          "p": "g86Xj5aZ9JZ4sS3n"
+        }
+      ]
+    },
+    {
+      "host": "https://orchid-dev-okapi.folio-dev.indexdata.com",
+      "accounts": [
+        {
+          "tag": "id_admin:dev1@orchid-dev",
+          "tenant": "dev1",
+          "username":  "id_admin"
+        },
+        {
+          "tag": "id_admin:dev2@orchid-dev",
+          "tenant": "dev2",
+          "username": "id_admin"
+        },
+        {
+          "tag": "okapi_admin:supertenant@orchid-dev",
+          "tenant": "supertenant",
+          "username": "okapi_admin"
+        }
+      ]
+    },
+    {
+      "host": "https://harvester-dev-okapi.folio-dev.indexdata.com",
+      "accounts": [
+        {
+          "tag": "harvester_admin:harvester@harvester-dev",
+          "tenant": "harvester",
+          "username": "harvester_admin"
+        },
+        {
+          "tag": "harvesterdev_admin:harvesterdev@harvester-dev",
+          "tenant": "harvesterdev",
+          "username": "harvesterdev_admin"
+        }
+      ]
+    },
+    {
+      "host": "https://okapi.gbv.de",
+      "accounts": [
+        {
+          "tag": "m2_admin:minerva2@okapi.gbv.de",
+          "tenant": "minerva2",
+          "username": "m2_admin"
+        },
+        {
+          "tag": "m3_admin:minerva3@okapi.gbv.de",
+          "tenant": "minerva3",
+          "username": "m3_admin"
+        },
+        {
+          "tag": "m4_admin:minerva4@okapi.gbv.de",
+          "tenant": "minerva4",
+          "username": "m4_admin"
+        },
+        {
+          "tag": "m5_admin:minerva5@okapi.gbv.de",
+          "tenant": "minerva5",
+          "username": "m5_admin"
+        },
+        {
+          "tag": "m5_admin:minerva51@okapi.gbv.de",
+          "tenant": "minerva51",
+          "username": "m5_admin"
+        }
+      ]
+    },
+    {
+      "host": "https://okapi.okapi.svc.cluster.local:9130",
+      "accounts": [
+        {
+          "tag": "m5_admin:minerva51@okapi.okapi.svc.cluster.local:9130",
+          "tenant": "minerva51",
+          "username": "m5_admin"
+        }
+      ]
+    },
+    {
+      "host": "https://uchicago-test-okapi.folio.indexdata.com",
+      "accounts": [
+        {
+          "tag": "uschicago@uchicago-test",
+          "tenant": "uchicago",
+          "username": "?"
+        }
+      ]
+    },
+    {
+      "host": "https://spokane-test-okapi.folio.indexdata.com",
+      "accounts": [
+        {
+          "tag": "spokane@spokane-test",
+          "tenant": "spokane",
+          "username": "?"
+        }
+      ]
+    },
+    {
+      "host": "https://okapi-bugfest-orchid.int.aws.folio.org",
+      "accounts": [
+        {
+          "tag": "folio:fs09000000@okapi-bugfest-orchid",
+          "tenant": "fs09000000",
+          "username": "folio",
+          "p": "folio"
+        }
+      ]
+    },
+    {
+      "host": "https://okapi-bugfest-poppy.int.aws.folio.org",
+      "accounts": [
+        {
+          "tag": "folio:fs09000000@okapi-bugfest-poppy",
+          "tenant": "fs09000000",
+          "username": "folio",
+          "p": "folio"
+        }
+      ]
+    }
+  ],
+  "endPoints" : [
+    "instance-storage/instances",
+    "item-storage/items",
+    "holdings-storage/holdings",
+    "identifier-types",
+    "loan-types",
+    "material-types",
+    "inventory-storage/bound-with-parts",
+    "inventory/instances",
+    "inventory/items",
+    "search/instances",
+    "preceding-succeeding-titles",
+    "instance-storage/instance-relationships",
+    "marc-records",
+    "locations",
+    "location-units/institutions",
+    "location-units/campuses",
+    "location-units/libraries",
+    "users",
+    "perms/users",
+    "loan-storage/loans",
+    "loan-storage/loan-history",
+    "circulation-rules-storage",
+    "loan-policy-storage/loan-policies",
+    "request-storage/requests",
+    "fixed-due-date-schedule-storage/fixed-due-date-schedules",
+    "staff-slips-storage/staff-slips",
+    "patron-notice-policy-storage/patron-notice-policies",
+    "request-policy-storage/request-policies",
+    "scheduled-notice-storage/scheduled-notices",
+    "circulation/loans",
+    "circulation/check-out-by-barcode",
+    "circulation/check-in-by-barcode",
+    "circulation/renew-by-barcode",
+    "circulation/renew-by-id",
+    "finance/budgets",
+    "finance/funds",
+    "finance/fiscal-years",
+    "orders-storage/acquisition-methods",
+    "orders-storage/po-lines",
+    "orders-storage/purchase-orders",
+    "finance-storage/budget-expense-classes",
+    "organizations/organizations",
+    "inventory-upsert-hrid/fetch",
+    "inventory-batch-upsert-hrid",
+    "inventory-upsert-hrid",
+    "shared-inventory-upsert-matchkey/fetch",
+    "harvester-admin/harvestables",
+    "harvester-admin/harvestables/xml-bulk",
+    "harvester-admin/harvestables/oai-pmh",
+    "harvester-admin/transformations",
+    "harvester-admin/steps",
+    "harvester-admin/tsas",
+    "harvester-admin/storages",
+    "meta-storage/records",
+    "feefines",
+    "owners",
+    "accounts",
+    "overdue-fines-policies",
+    "lost-item-fees-policies",
+    "manual-block-templates",
+    "feefineactions",
+    "automated-patron-blocks",
+    "user-summary",
+    "templates"
+  ]
+}
