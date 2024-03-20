@@ -7,8 +7,9 @@ function showHelp() {
     printf "  -h <host> :                 login to service at this host (requires either -A or both of -u and -t)"
     printf "  -p <password>               password for the provided account\n"
     printf "  -E <endpoint match string>: list FOLIO endpoints (API paths) matching the provided string '-E ?' shows them all \n"
+    printf "  -e <api path extension>     further path elements to add to the endpoint, for example a record identifying UUID"
     printf "  -m <method>:                defaults to curl's default\n"
-    printf "  -q <query string>:          query string, like extension to path (/12345) or query (?query=name=test)\n"
+    printf "  -q <query string>:          query string, i.e. query=name=my test\n"
     printf "  -d <inline body>:           request body on command line\n"
     printf "  -f <file name>:             file containing request body\n"
     printf "  -c <content type>:          defaults to application/json\n"
@@ -42,7 +43,8 @@ fi
 OPTIND=1
 method=""
 api=""
-ext=""
+apiPathExt=""
+query=""
 file=""
 data=""
 curlOptions=""
@@ -63,13 +65,14 @@ EP=""
 script_args=()
 while [ $OPTIND -le "$#" ]
 do
-  if getopts "A:u:t:p:h:E:d:m:q:f:c:j:o:nvx?" option
+  if getopts "A:u:t:p:h:E:e:d:m:q:f:c:j:o:nvx?" option
   then
     case $option
     in
       c) contentType=$OPTARG;;
       d) data=$OPTARG;;
       E) endpointMatchString=$OPTARG;;
+      e) apiPathExt="/${OPTARG#"/"}";;
       f) file=$OPTARG;;
       j) jqCommand=$OPTARG;;
       A) accountMatchString=$OPTARG
@@ -80,12 +83,11 @@ do
       u) p_foliouser=$OPTARG
          gotAuthParameters=true;;
       p) p_password=$OPTARG;;
+      q) query="query=${OPTARG#"query="}";;
       t) p_foliotenant=$OPTARG
          gotAuthParameters=true;;
       h) p_foliohost=$OPTARG
          gotAuthParameters=true;;
-      q) # query string
-         ext=$OPTARG;;
       n) noRecordLimit=true;;
       v) viewContext=true;;
       x) exit=true;;
@@ -370,7 +372,7 @@ if [[ -n "$EP" ]]; then
   contentTypeHeader="Content-type: $contentType"
 
   # Set record limit to 1.000.000 ~ "no limit"
-  url="$FOLIOHOST"/"$EP""$ext"
+  url="$FOLIOHOST"/"$EP""$apiPathExt"
   if ( $noRecordLimit ); then
     if [[ $url == *"?"* ]]; then
       url="$url""&limit=1000000"
@@ -382,6 +384,8 @@ if [[ -n "$EP" ]]; then
   maybeRefreshLogin
   tokenHeader="x-okapi-token: $TOKEN"
 
+  echo "$curlOptions"
+
   if [[ -z "$file" ]] && [[ -z "$data" ]]; then
     if ( $viewContext ); then
       # shellcheck disable=SC2086
@@ -389,10 +393,10 @@ if [[ -n "$EP" ]]; then
     fi
     if [[ -n "$jqCommand" ]]; then
       # shellcheck disable=SC2086
-      curl -s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  "$curlOptions" | jq -r "$jqCommand"
+      curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  "$curlOptions" | jq -r "$jqCommand"
     else
       # shellcheck disable=SC2086
-      curl -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $curlOptions
+      curl -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $curlOptions
     fi
   else
     if ( $viewContext ); then
