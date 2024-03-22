@@ -208,7 +208,7 @@ function setAuthEnvVars {
 }
 
 # Send the login request to Okapi
-function postLogin {
+function getToken {
   local respHeadersFile
   local authResponse
   local respHeaders
@@ -241,7 +241,7 @@ function postLogin {
 function maybeRefreshLogin {
   if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "$expiration" ]]; then
     ($viewContext) && echo "Token expired $expiration. Renewing login before request."
-    postLogin
+    getToken
   fi
 }
 
@@ -271,7 +271,7 @@ if ( $gotAccountMatchString || $gotAuthParameters ); then
   setAuthEnvVars
   if [[ $? -eq 1 ]]; then
     passwordPrompt
-    postLogin
+    getToken
   fi
 elif  [[ -z "$TOKEN" ]]; then
   if [[ -z "$p_endpoint" ]]; then
@@ -290,7 +290,7 @@ elif  [[ -z "$TOKEN" ]]; then
        gotAccountMatchString=true
        setAuthEnvVars
        passwordPrompt
-       postLogin;; # Proceed with new login.
+       getToken;; # Proceed with new login.
   esac
 fi
 
