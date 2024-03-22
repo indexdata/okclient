@@ -124,8 +124,7 @@ function getFolioAccount {
   fi
   if [[ "$accountMatchString" == "?" ]]; then
     printf "\nChoose a FOLIO service and account to log in to (more services can be added in %s)\n\n" "$folioServicesJson"
-    OPTS=$(jq -r '.folios[].accounts[].tag' "$folioServicesJson");
-    select accountTag in $OPTS
+    select accountTag in $(jq -r '.folios[].accounts[].tag' "$folioServicesJson")
     do
      break
     done
@@ -136,15 +135,13 @@ function getFolioAccount {
       printf "Selected FOLIO account: %s\n" "$accountTag"
     elif [[ "$accountsCount" == "0" ]]; then
       printf "\nChoose a FOLIO service and account to log in to (listing them because none contains the string '%s')\n\n" "$accountMatchString"
-      OPTS=$(jq -r '.folios[].accounts[].tag' "$folioServicesJson");
-      select accountTag in $OPTS
+      select accountTag in $(jq -r '.folios[].accounts[].tag' "$folioServicesJson")
       do
        break
       done
     else
-      OPTS=$(jq -r --arg tag "$accountMatchString" '.folios[].accounts[].tag|select(contains($tag))' "$folioServicesJson")
       printf "\nSelect a FOLIO service to log in to (more services can be added in %s)\n\n" "$folioServicesJson"
-      select accountTag in $OPTS
+      select accountTag in $(jq -r --arg tag "$accountMatchString" '.folios[].accounts[].tag|select(contains($tag))' "$folioServicesJson")
       do
        break
       done
@@ -306,8 +303,7 @@ if [[ -z "$p_endpoint" ]] && ( ! $gotAccountMatchString && ! $gotAuthParameters 
   fi
   if [[ -z "$OPTS" ]]; then
     printf "\nDid not yet register a FOLIO API matching '%s'. Here's a list of currently registered FOLIO API paths:\n\n" "$endpointMatchString"
-    OPTS=$(jq -r '.endPoints[]' "$folioServicesJson" );
-    select endpoint in $OPTS
+    select endpoint in $(jq -r '.endPoints[]' "$folioServicesJson")
         do
           break
         done
@@ -339,10 +335,9 @@ if [[ -n "$endpoint" ]]; then
   contentTypeHeader="Content-type: $contentType"
 
   # extension doesn't start with '/' or '?'?  Insert '/'
-  [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
+  [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
   url="$FOLIOHOST"/"$endpoint""$endpointExtension"
   # Set record limit to 1.000.000 ~ "no limit"
-  echo "$url"
   if ( $noRecordLimit ); then
     if [[ $url == *"?"* ]]; then
       url="$url""&limit=1000000"
@@ -356,8 +351,6 @@ if [[ -n "$endpoint" ]]; then
 
   # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
   if [[ -z "$file" ]] && [[ -z "$data" ]]; then
-    echo "$url"
-    echo "$query"
     ( $viewContext ) &&  echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
     [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
     [ -z "$jqCommand" ] && curl -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
