@@ -12,6 +12,7 @@ function showHelp {
     printf "  -e <api path extension>      further path elements to add to the endpoint, for example a record identifying UUID\n"
     printf "  -q <query string>:           a CQL query string, i.e. 'title=\"magazine - q*\"' which will be url encoded as\n"
     printf "                                query=title%%3D%%22magazine+-+q%%2A%%22\n"
+    printf "  -X <method>:                 defaults to curl's default"
     printf "  -n:                          no limit; remove the APIs default limit (if any) on the number of records in the response\n"
     printf "  -d <inline body>:            request body on command line\n"
     printf "  -f <file name>:              file containing request body\n"
@@ -67,7 +68,7 @@ viewContext=false
 script_args=()
 while [ $OPTIND -le "$#" ]
 do
-  if getopts "A:u:t:p:h:E:e:d:m:q:f:c:j:o:nvx?" option
+  if getopts "A:u:t:p:h:E:e:d:X:q:f:c:j:o:nvx?" option
   then
     case $option
     in
@@ -79,7 +80,7 @@ do
       j) jqCommand=$OPTARG;;
       A) accountMatchString=$OPTARG
          gotAccountMatchString=true;;
-      m) method="-X${OPTARG^^}";;
+      X) method="-X${OPTARG^^}";;
       o) additionalCurlOptions=$OPTARG;;
       u) p_foliouser=$OPTARG
          gotAuthParameters=true;;
@@ -357,7 +358,7 @@ if [[ -n "$endpoint" ]]; then
   else
     ( $viewContext ) && [ -n "$file" ] && echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
     ( $viewContext ) && [ -n "$data" ] && echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
-    [ -n "$file" ] && curl "$method" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
-    [ -n "$data" ] && curl -w "\n" "$method" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
+    [ -n "$file" ] && curl -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
+    [ -n "$data" ] && curl -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
   fi
 fi
