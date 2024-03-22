@@ -1,4 +1,4 @@
-function showHelp() {
+function showHelp {
     printf "Usage: . ./ok.sh [options] [folio api path]\n\n"
     printf "Options: \n"
     printf "  -A <account match string>:  login to service with label matched by provided string, '-A ?' shows list of all registered accounts to choose from \n"
@@ -116,7 +116,7 @@ DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 
 folioServicesJson="$DIR"/folio-services.json
 
-function clearAuthCache () {
+function clearAuthCache {
   FOLIOHOST=""
   FOLIOTENANT=""
   FOLIOUSER=""
@@ -127,7 +127,7 @@ function clearAuthCache () {
 }
 
 # Fetch accounts list from json, optionally filtered by match string
-function getFolioAccount() {
+function getFolioAccount {
   if ( $viewContext ); then
     printf "Account match string: %s\n" "$accountMatchString"
   fi
@@ -166,7 +166,7 @@ function getFolioAccount() {
 }
 
 # Prompt user for password unless already supplied (on command line or cached from previous login)
-function passwordPrompt () {
+function passwordPrompt {
     if [[ -z "$p_password" ]] ; then
       printf "\nEnter password"
       [[ -n "$accountTag" ]] && printf " for %s" "$accountTag" || printf " for %s" "$FOLIOUSER"
@@ -185,7 +185,7 @@ function passwordPrompt () {
 }
 
 # Potentially present list of services to choose from, set account and login credentials
-function setAuthEnvVars() {
+function setAuthEnvVars {
   if ( $gotAccountMatchString ); then
     clearAuthCache
     getFolioAccount
@@ -231,7 +231,7 @@ function setAuthEnvVars() {
 }
 
 # Send the login request to Okapi
-function postLogin() {
+function postLogin {
   local respHeadersFile
   local authResponse
   local respHeaders
@@ -272,7 +272,7 @@ function postLogin() {
 }
 
 # Check token expiration and issue new login if expired
-function maybeRefreshLogin() {
+function maybeRefreshLogin {
   if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "$expiration" ]]; then
     if ($viewContext); then
       echo "Token expired $expiration. Renewing login before request."
