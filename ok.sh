@@ -19,10 +19,11 @@ function showHelp {
     printf "  -d <inline body>:             request body on command line\n"
     printf "  -f <file name>:               file containing request body\n"
     printf "  -c <content type>:            defaults to application/json\n"
+    printf "  -s                            curl option '-s'"
     printf "  -o <additional curl options>  add curl options like -s, -v, -o, etc\n"
     printf "  -j <jq script>:               a jq command to apply to the Okapi response, ignored with -f or -d\n"
     printf "  -v                            shows current context and logs the curl request \n"
-    printf "                                 (does not give verbose curl logging, use -o \"-v\" for that).\n"
+    printf "                                 (does not invoke curl -v, use -o \"-v\" for that).\n"
     printf "  -?                            show this message\n"
     printf "\n  EXAMPLES:\n"
     printf "  Login, GET instances:                             . ./ok.sh -A diku@localhost -p admin instance-storage/instances\n"
@@ -61,6 +62,7 @@ query=""
 noRecordLimit=false
 method=""
 contentType=""
+s=""
 file=""
 data=""
 additionalCurlOptions=""
@@ -71,7 +73,7 @@ viewContext=false
 script_args=()
 while [ $OPTIND -le "$#" ]
 do
-  if getopts "A:S:u:t:p:h:E:e:d:X:q:f:c:j:o:nvx?" option
+  if getopts "A:S:u:t:p:h:E:e:d:X:q:f:c:j:o:snvx?" option
   then
     case $option
     in
@@ -85,6 +87,7 @@ do
          gotAccountMatchString=true;;
       S) session=$OPTARG"_";;
       X) method="-X${OPTARG^^}";;
+      s) s="-s";;
       o) additionalCurlOptions=$OPTARG;;
       u) p_foliouser=$OPTARG
          gotAuthParameters=true;;
@@ -382,11 +385,11 @@ if [[ -n "$endpoint" ]]; then
   if [[ -z "$file" ]] && [[ -z "$data" ]]; then
     ( $viewContext ) &&  echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
     [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
-    [ -z "$jqCommand" ] && curl -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+    [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
   else
-    ( $viewContext ) && [ -n "$file" ] && echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
-    ( $viewContext ) && [ -n "$data" ] && echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
-    [ -n "$file" ] && curl -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
-    [ -n "$data" ] && curl -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
+    ( $viewContext ) && [ -n "$file" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
+    ( $viewContext ) && [ -n "$data" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
+    [ -n "$file" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
+    [ -n "$data" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
   fi
 fi
