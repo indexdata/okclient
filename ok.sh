@@ -1,4 +1,4 @@
-function showHelp {
+function __okclient_showHelp {
     printf "Usage: . ./ok.sh [options] [folio api path]\n\n"
     printf "Options: \n"
     printf "  -A <account match string>:    find FOLIO account from register (folio-services.json) by match string,\n"
@@ -39,90 +39,59 @@ function showHelp {
 
 }
 
-if [ "$1" == "-?" ]; then
-  showHelp
-elif [ "$#" -eq 0 ] ; then
-  printf "FOLIO client script  (do  [ ./ok.sh -? ]  to see options and examples)\n"
-fi
+function __okclient_getToken {
+  local respHeadersFile
+  local authResponse
+  local respHeaders
+  local statusHeader
 
-OPTIND=1
-accountMatchString=""
-gotAccountMatchString=false
-p_foliouser=""
-p_foliotenant=""
-p_foliohost=""
-p_password=""
-gotAuthParameters=false
-session=""
-endpointMatchString=""
-p_endpoint=""
-endpoint=""
-endpointExtension=""
-query=""
-noRecordLimit=false
-method=""
-contentType=""
-s=""
-file=""
-data=""
-additionalCurlOptions=""
-jqCommand=""
-exit=false
-viewContext=false
+  printf "%s is %s\n\n" "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
 
-script_args=()
-while [ $OPTIND -le "$#" ]
-do
-  if getopts "A:S:u:t:p:h:E:e:d:X:q:f:c:j:o:snvx?" option
-  then
-    case $option
-    in
-      c) contentType=$OPTARG;;
-      d) data=$OPTARG;;
-      E) endpointMatchString=$OPTARG;;
-      e) endpointExtension=$OPTARG;;
-      f) file=$OPTARG;;
-      j) jqCommand=$OPTARG;;
-      A) accountMatchString=$OPTARG
-         gotAccountMatchString=true;;
-      S) session=$OPTARG"_";;
-      X) method="-X${OPTARG^^}";;
-      s) s="-s";;
-      o) additionalCurlOptions=$OPTARG;;
-      u) p_foliouser=$OPTARG
-         gotAuthParameters=true;;
-      p) p_password=$OPTARG;;
-      q) query="query=${OPTARG#"query="}";;
-      t) p_foliotenant=$OPTARG
-         gotAuthParameters=true;;
-      h) p_foliohost=$OPTARG
-         gotAuthParameters=true;;
-      n) noRecordLimit=true;;
-      v) viewContext=true;;
-      x) exit=true;;
-      \?) return;;
-    esac
+  respHeadersFile="h-$(uuidgen).txt"
+  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login-with-expiry")
+  respHeaders=$(<"$respHeadersFile")
+  rm "$respHeadersFile"
+  statusHeader=$(echo "${respHeaders}" | head -1)
+  if [[ ! $statusHeader == *" 201 "* ]]; then
+    printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
+    printf "%s\n" "$respHeaders"
+    if [[ $authResponse = "{"*"}" ]]; then
+      printf "Response : \"%s\"\n" "$(echo "$authResponse" | jq -r '.errors[]?.message')"
+    else
+      printf "%s\n" "$authResponse"
+    fi
+    return || exit 1
   else
-    script_args+=("${!OPTIND}")
-    ((OPTIND++))
+    declare -g -x "$session"TOKEN="$(echo "$respHeaders" | grep folioAccessToken | tr -d '\r' | cut -d "=" -f2 | cut -d ";" -f1)"
+    sessionTOKEN="$session"TOKEN
+    ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\n" "$respHeaders"
+    declare -g -x "$session"expiration="$(echo "$authResponse" | jq -r '.accessTokenExpiration')"
+    sessionExpiration="$session"expiration
+    ( $viewContext ) && echo "Expiration: ${!sessionExpiration}"
   fi
-done
+}
 
-p_endpoint="${script_args[0]}"
-contentType=${contentType:-"application/json"}
+function __okclient_define_session_env_vars {
+  # Prefix FOLIO env var names with session tag (if any)
+  # The values must be accessed by indirection, i.e. ${!sessionToken}
+  sessionFOLIOHOST="$session"FOLIOHOST
+  sessionFOLIOTENANT="$session"FOLIOTENANT
+  sessionFOLIOUSER="$session"FOLIOUSER
+  sessionTOKEN="$session"TOKEN
+  sessionExpiration="$session"expiration
+}
 
-# Find working dir, even if the script is symlinked, to have path to the registry json with accounts and APIs.
-SOURCE=${BASH_SOURCE[0]}
-while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
-  SOURCE=$(readlink "$SOURCE")
-  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-done
-DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
-folioServicesJson="$DIR"/folio-services.json
+function __okclient_showSessionVariables {
+  printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "${!sessionFOLIOHOST}"
+  printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
+  printf "User (%s):     %s\n" "$sessionFOLIOUSER" "${!sessionFOLIOUSER}"
+  printf "Token (%s):        %s\n" "$sessionTOKEN" "${!sessionTOKEN}"
+  printf "Token expires: %s\n" "${!sessionExpiration}"
+  printf "\n"
+}
 
 # shellcheck disable=SC2140
-function clearAuthCache {
+function __okclient_clearAuthCache {
   declare -g -x "$session"FOLIOHOST=""
   declare -g -x "$session"FOLIOTENANT=""
   declare -g -x "$session"FOLIOUSER=""
@@ -133,7 +102,7 @@ function clearAuthCache {
 }
 
 # Fetch accounts list from json register, optionally filtered by match string
-function getFolioAccount {
+function __okclient_getFolioAccount {
   if ( $viewContext ); then
     printf "Account match string: %s\n" "$accountMatchString"
   fi
@@ -168,48 +137,29 @@ function getFolioAccount {
   fi
 }
 
-# Prompt user for password unless already supplied (on command line or cached from previous login)
-function passwordPrompt {
-    if [[ -z "$p_password" ]] ; then
-      printf "\nEnter password"
-      [[ -n "$accountTag" ]] && printf " for %s /%s/%s/%s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "${!sessionFOLIOUSER}"
-      printf ": "
-      read -r -s password
-      if [[ -z "$password" ]]; then
-        printf "\n Login cancelled\n"
-        return || exit 1
-      else
-        printf "\n"
-      fi
-      declare -g "$session"PASSWORD="$password"
-    else
-      declare -g "$session"PASSWORD="$p_password"
-    fi
-}
-
 # Potentially present list of services to choose from, set account and login credentials
-function setAuthEnvVars {
+function __okclient_setAuthEnvVars {
   if ( $gotAccountMatchString ); then
-    clearAuthCache
-    getFolioAccount
+    __okclient_clearAuthCache
+    __okclient_getFolioAccount
   else
     if [[ -n "$p_foliouser" ]]; then
       if [[ -z "$p_foliotenant" ]] || [[ -z "$p_foliohost" ]]; then
-        printf "Login initiated by -u but cannot determine account without also either -A or both of -t and -h\n"
+        printf "Login initiated by -u but cannot determine FOLIO account to use without also either -A or both of -t and -h\n"
         return 0
       else
-        clearAuthCache
+        __okclient_clearAuthCache
       fi
     fi
     if [[ -n "$p_foliotenant" ]]; then
       if [[ -z "$p_foliouser" ]] || [[ -z "$p_foliohost" ]]; then
-        printf "Login initiated by -t but cannot determine account without also either -A or both of -u and -h\n"
+        printf "Login initiated by -t but cannot determine FOLIO account to use without also either -A or both of -u and -h\n"
         return 0
       fi
     fi
     if [[ -n "$p_foliohost" ]]; then
       if [[ -z "$p_foliotenant" ]] || [[ -z "$p_foliouser" ]]; then
-        printf "Login initiated by -h but cannot determine account without also either -A or both of -u and -t\n"
+        printf "Login initiated by -h but cannot determine FOLIO account to use without also either -A or both of -u and -t\n"
         return 0
       fi
     fi
@@ -229,168 +179,249 @@ function setAuthEnvVars {
   return 1
 }
 
-# Send the login request to Okapi
-function getToken {
-  local respHeadersFile
-  local authResponse
-  local respHeaders
-  local statusHeader
-
-  echo "$sessionFOLIOTENANT is ${!sessionFOLIOTENANT}"
-
-  respHeadersFile="h-$(uuidgen).txt"
-  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login-with-expiry")
-  respHeaders=$(<"$respHeadersFile")
-  rm "$respHeadersFile"
-  statusHeader=$(echo "${respHeaders}" | head -1)
-  if [[ ! $statusHeader == *" 201 "* ]]; then
-    printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
-    printf "%s\n" "$respHeaders"
-    if [[ $authResponse = "{"*"}" ]]; then
-      printf "Response : \"%s\"\n" "$(echo "$authResponse" | jq -r '.errors[]?.message')"
+# Prompt user for password unless already supplied (on command line or cached from previous login)
+function __okclient_promptForPassword {
+    if [[ -z "$p_password" ]] ; then
+      printf "\nEnter password"
+      [[ -n "$accountTag" ]] && printf " for %s %s %s %s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "${!sessionFOLIOUSER}"
+      printf ": "
+      read -r -s password
+      if [[ -z "$password" ]]; then
+        printf "\n Login cancelled\n"
+        return || exit 1
+      else
+        printf "\n"
+      fi
+      declare -g "$session"PASSWORD="$password"
     else
-      printf "%s\n" "$authResponse"
+      declare -g "$session"PASSWORD="$p_password"
     fi
-    return || exit 1
-  else
-    declare -g -x "$session"TOKEN="$(echo "$respHeaders" | grep folioAccessToken | tr -d '\r' | cut -d "=" -f2 | cut -d ";" -f1)"
-    sessionTOKEN="$session"TOKEN
-    ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\n" "$respHeaders"
-    declare -g -x "$session"expiration="$(echo "$authResponse" | jq -r '.accessTokenExpiration')"
-    sessionExpiration="$session"expiration
-    ( $viewContext ) && echo "Expiration: ${!sessionExpiration}"
+}
+
+function __okclient_select_account_and_log_in {
+  if ( $gotAccountMatchString || $gotAuthParameters ); then
+    # received request to login
+    __okclient_setAuthEnvVars
+    if [[ $? -eq 1 ]]; then
+      __okclient_promptForPassword
+      __okclient_getToken
+      return 0
+    fi
+  elif  [[ -z "${!sessionTOKEN}" ]]; then
+    # has no existing login
+    if [[ -z "$p_endpoint" ]]; then
+      printf "\nGot no Okapi token, and no API was given for requests. Want to select from lists of FOLIO accounts and FOLIO endpoints? "
+    else
+      printf "\nGot no Okapi token for making requests. Continue with list of FOLIO accounts to log in to?"
+    fi
+    read -r -p ' [Y/n]? ' choice
+    choice=${choice:-Y}
+    case "$choice" in
+      n|N) return;;
+      *) accountMatchString="?"
+         gotAccountMatchString=true
+         __okclient_setAuthEnvVars
+         __okclient_promptForPassword
+         __okclient_getToken;;
+    esac
   fi
 }
+
+function __okclient_select_endpoint {
+  # Create list of endpoints to choose from, prompt user to choose.
+  if [[ -z "$p_endpoint" ]] && ( ! $gotAccountMatchString && ! $gotAuthParameters ) && ( ! $viewContext ) || [[ -n "$endpointMatchString" ]] ; then
+    if [[ $endpointMatchString == "?" ]]; then
+      OPTS=$(jq -r '.endPoints[]' "$folioServicesJson" );
+    else
+      OPTS=$(jq -r --arg subStr "$endpointMatchString" '.endPoints[]|(select(contains($subStr)))' "$folioServicesJson" );
+    fi
+    if [[ -z "$OPTS" ]]; then
+      printf "\nDid not yet register a FOLIO API matching '%s'. Here's a list of currently registered FOLIO API paths:\n\n" "$endpointMatchString"
+      select endpoint in $(jq -r '.endPoints[]' "$folioServicesJson")
+          do
+            break
+          done
+    else
+      matchCount=$(echo "$OPTS" | wc -l)
+      if [[ "$matchCount" == "1" ]]; then
+        endpoint="$OPTS"
+        printf "Selecting unique endpoint match: %s\n" "$endpoint"
+      else
+        if [[ -z "$endpointMatchString" ]]; then
+          printf "\nCurrently registered FOLIO API paths to pick from:\n\n"
+        else
+          printf "\nCurrently registered FOLIO API paths matching '%s':\n\n" "$endpointMatchString"
+        fi
+        select endpoint in $OPTS
+          do
+            break
+          done
+      fi
+    fi
+    printf "\n"
+  else
+    endpoint="$p_endpoint"
+  fi
+}
+
+function __okclient_build_run_curl_request {
+  tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
+    contentTypeHeader="Content-type: $contentType"
+
+    # extension doesn't start with '/' or '?'?  Insert '/'
+    [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
+    url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
+    # Set record limit to 1.000.000 ~ "no limit"
+    if ( $noRecordLimit ); then
+      if [[ $url == *"?"* ]]; then
+        url="$url""&limit=1000000"
+      else
+        url="$url""?limit=1000000"
+      fi
+    fi
+
+    __okclient_maybeRefreshLogin
+    tokenHeader="x-okapi-token: ${!sessionTOKEN}"
+
+    # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
+    if [[ -z "$file" ]] && [[ -z "$data" ]]; then
+      ( $viewContext ) &&  echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
+      [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
+      [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+    else
+      ( $viewContext ) && [ -n "$file" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
+      ( $viewContext ) && [ -n "$data" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
+      [ -n "$file" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
+      [ -n "$data" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
+    fi
+}
+
+function okclient {
+  if [ "$1" == "-?" ]; then
+    __okclient_showHelp
+  elif [ "$#" -eq 0 ] ; then
+    printf "FOLIO client script  (do  [ ./ok.sh -? ]  to see options and examples)\n"
+  fi
+
+  OPTIND=1
+  accountMatchString=""
+  gotAccountMatchString=false
+  p_foliouser=""
+  p_foliotenant=""
+  p_foliohost=""
+  p_password=""
+  gotAuthParameters=false
+  session=""
+  endpointMatchString=""
+  p_endpoint=""
+  endpoint=""
+  endpointExtension=""
+  query=""
+  noRecordLimit=false
+  method=""
+  contentType=""
+  s=""
+  file=""
+  data=""
+  additionalCurlOptions=""
+  jqCommand=""
+  exit=false
+  viewContext=false
+
+  script_args=()
+  while [ $OPTIND -le "$#" ]
+  do
+    if getopts "A:S:u:t:p:h:E:e:d:X:q:f:c:j:o:snvx?" option
+    then
+      case $option
+      in
+        c) contentType=$OPTARG;;
+        d) data=$OPTARG;;
+        E) endpointMatchString=$OPTARG;;
+        e) endpointExtension=$OPTARG;;
+        f) file=$OPTARG;;
+        j) jqCommand=$OPTARG;;
+        A) accountMatchString=$OPTARG
+           gotAccountMatchString=true;;
+        S) session=$OPTARG"_";;
+        X) method="-X${OPTARG^^}";;
+        s) s="-s";;
+        o) additionalCurlOptions=$OPTARG;;
+        u) p_foliouser=$OPTARG
+           gotAuthParameters=true;;
+        p) p_password=$OPTARG;;
+        q) query="query=${OPTARG#"query="}";;
+        t) p_foliotenant=$OPTARG
+           gotAuthParameters=true;;
+        h) p_foliohost=$OPTARG
+           gotAuthParameters=true;;
+        n) noRecordLimit=true;;
+        v) viewContext=true;;
+        x) exit=true;;
+        \?) return;;
+      esac
+    else
+      script_args+=("${!OPTIND}")
+      ((OPTIND++))
+    fi
+  done
+
+  p_endpoint="${script_args[0]}"
+  contentType=${contentType:-"application/json"}
+
+  # Find working dir, even if the script is symlinked, to have path to the registry json with accounts and APIs.
+  SOURCE=${BASH_SOURCE[0]}
+  while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+    DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+    SOURCE=$(readlink "$SOURCE")
+    [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  done
+  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+  folioServicesJson="$DIR"/folio-services.json
+
+  __okclient_define_session_env_vars
+
+  if ( $viewContext ); then
+    __okclient_showSessionVariables
+  fi
+
+  if ( $exit ); then
+    # Clear login credentials and stop on -x
+    if [[ -z "${!sessionTOKEN}" ]]; then
+     printf "\nI was asked to log out but there was already no access token found. Clearing env vars and exiting.\n\n"
+    else
+     printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
+    fi
+    __okclient_clearAuthCache
+  else
+    if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "${!sessionTOKEN}" ]]; then
+      __okclient_select_account_and_log_in
+      if [[ $? -eq 1 ]]; then
+        # Got a token, determine API
+        __okclient_select_endpoint
+      fi
+    else
+      # Already got a token, determine API
+      __okclient_select_endpoint
+    fi
+
+    if [[ -n "$endpoint" ]]; then
+      # Determined an API, run curl request
+      __okclient_build_run_curl_request
+    fi
+  fi
+
+}
+
+
+
+# Send the login request to Okapi
 
 # Check token expiration and issue new login if expired
-function maybeRefreshLogin {
+function __okclient_maybeRefreshLogin {
   if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sessionExpiration}" ]]; then
     ($viewContext) && echo "Token expired ${!sessionExpiration}. Renewing login before request."
-    getToken
+    __okclient_getToken
   fi
 }
 
-# Begin processing
-
-# Name session authentication variables
-sessionFOLIOHOST="$session"FOLIOHOST
-sessionFOLIOTENANT="$session"FOLIOTENANT
-sessionFOLIOUSER="$session"FOLIOUSER
-sessionTOKEN="$session"TOKEN
-sessionExpiration="$session"expiration
-
-if ( $viewContext ); then
-  printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "${!sessionFOLIOHOST}"
-  printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
-  printf "User (%s):     %s\n" "$sessionFOLIOUSER" "${!sessionFOLIOUSER}"
-  printf "Token (%s):        %s\n" "$sessionTOKEN" "${!sessionTOKEN}"
-  printf "Token expires: %s\n" "${!sessionExpiration}"
-  printf "\n"
-fi
-
-# Clear login credentials
-if ( $exit ); then
-  if [[ -z "${!sessionTOKEN}" ]]; then
-   printf "\nI was asked to log out but there was already no access token found. Clearing env vars.\n\n"
-  else
-   printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
-  fi
-  clearAuthCache
-  return || exit 1
-fi
-
-# Potentially prompt for password, set credentials env and send login to Okapi
-if ( $gotAccountMatchString || $gotAuthParameters ); then
-  setAuthEnvVars
-  if [[ $? -eq 1 ]]; then
-    passwordPrompt
-    getToken
-  fi
-elif  [[ -z "${!sessionTOKEN}" ]]; then
-  if [[ -z "$p_endpoint" ]]; then
-    printf "\nGot no Okapi token, and no API was given for requests. Want to select from lists of FOLIO accounts and FOLIO endpoints? "
-  else
-    printf "\nGot no Okapi token for making requests. Continue with list of FOLIO accounts to log in to?"
-  fi
-  read -r -p ' [Y/n]? ' choice
-  choice=${choice:-Y}
-  case "$choice" in
-    n|N) return;;
-    *) accountMatchString="?"
-       if [[ -z "$p_endpoint" ]]; then
-         endpointMatchString="?"
-       fi
-       gotAccountMatchString=true
-       setAuthEnvVars
-       passwordPrompt
-       getToken;; # Proceed with new login.
-  esac
-fi
-
-# Create list of endpoints to choose from, prompt user to choose.
-if [[ -z "$p_endpoint" ]] && ( ! $gotAccountMatchString && ! $gotAuthParameters ) && ( ! $viewContext ) || [[ -n "$endpointMatchString" ]] ; then
-  if [[ $endpointMatchString == "?" ]]; then
-    OPTS=$(jq -r '.endPoints[]' "$folioServicesJson" );
-  else
-    OPTS=$(jq -r --arg subStr "$endpointMatchString" '.endPoints[]|(select(contains($subStr)))' "$folioServicesJson" );
-  fi
-  if [[ -z "$OPTS" ]]; then
-    printf "\nDid not yet register a FOLIO API matching '%s'. Here's a list of currently registered FOLIO API paths:\n\n" "$endpointMatchString"
-    select endpoint in $(jq -r '.endPoints[]' "$folioServicesJson")
-        do
-          break
-        done
-  else
-    matchCount=$(echo "$OPTS" | wc -l)
-    if [[ "$matchCount" == "1" ]]; then
-      endpoint="$OPTS"
-      printf "Selecting unique endpoint match: %s\n" "$endpoint"
-    else
-      if [[ -z "$endpointMatchString" ]]; then
-        printf "\nCurrently registered FOLIO API paths to pick from:\n\n"
-      else
-        printf "\nCurrently registered FOLIO API paths matching '%s':\n\n" "$endpointMatchString"
-      fi
-      select endpoint in $OPTS
-        do
-          break
-        done
-    fi
-  fi
-  printf "\n"
-else
-  endpoint="$p_endpoint"
-fi
-
-# Build and execute curl request to Okapi.
-if [[ -n "$endpoint" ]]; then
-  tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
-  contentTypeHeader="Content-type: $contentType"
-
-  # extension doesn't start with '/' or '?'?  Insert '/'
-  [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
-  url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
-  # Set record limit to 1.000.000 ~ "no limit"
-  if ( $noRecordLimit ); then
-    if [[ $url == *"?"* ]]; then
-      url="$url""&limit=1000000"
-    else
-      url="$url""?limit=1000000"
-    fi
-  fi
-
-  maybeRefreshLogin
-  tokenHeader="x-okapi-token: ${!sessionTOKEN}"
-
-  # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
-  if [[ -z "$file" ]] && [[ -z "$data" ]]; then
-    ( $viewContext ) &&  echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
-    [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
-    [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
-  else
-    ( $viewContext ) && [ -n "$file" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
-    ( $viewContext ) && [ -n "$data" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
-    [ -n "$file" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
-    [ -n "$data" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
-  fi
-fi
