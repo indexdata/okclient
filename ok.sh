@@ -214,9 +214,10 @@ function setAuthEnvVars {
       fi
     fi
   fi
-  # Declare and export global env variables with auth info
+  # Declare and export global env variables with account and auth info
   # Prefix variable names with the session tag (if any)
-  # Use explicit auth arguments where given, otherwise use the account info from json register.
+  # Being dynamically named, these env vars must be accessed by indirection throughout the script, i.e. ${!sessionTOKEN}
+  # Use explicit account and auth arguments where given through options, otherwise fetch the account details from the json register.
   declare -g -x "$session"FOLIOHOST="${p_foliohost:-$(jq -r --arg tag "$accountTag" '.folios[]|select(.accounts[].tag == $tag) | .host' "$folioServicesJson")}"
   sessionFOLIOHOST="$session"FOLIOHOST
   declare -g -x "$session"FOLIOTENANT="${p_foliotenant:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .tenant' "$folioServicesJson")}"
@@ -269,9 +270,9 @@ function maybeRefreshLogin {
   fi
 }
 
-# BEGIN processing
+# Begin processing
 
-# Name session variables
+# Name session authentication variables
 sessionFOLIOHOST="$session"FOLIOHOST
 sessionFOLIOTENANT="$session"FOLIOTENANT
 sessionFOLIOUSER="$session"FOLIOUSER
