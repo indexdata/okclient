@@ -172,7 +172,7 @@ function getFolioAccount {
 function passwordPrompt {
     if [[ -z "$p_password" ]] ; then
       printf "\nEnter password"
-      [[ -n "$accountTag" ]] && printf " for %s /%s/%s/%s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "${!sFOLIOUSER}"
+      [[ -n "$accountTag" ]] && printf " for %s /%s/%s/%s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "${!sessionFOLIOUSER}"
       printf ": "
       read -r -s password
       if [[ -z "$password" ]]; then
@@ -218,13 +218,13 @@ function setAuthEnvVars {
   # Prefix variable names with the session tag (if any)
   # Use explicit auth arguments where given, otherwise use the account info from json register.
   declare -g -x "$session"FOLIOHOST="${p_foliohost:-$(jq -r --arg tag "$accountTag" '.folios[]|select(.accounts[].tag == $tag) | .host' "$folioServicesJson")}"
-  sFOLIOHOST="$session"FOLIOHOST
+  sessionFOLIOHOST="$session"FOLIOHOST
   declare -g -x "$session"FOLIOTENANT="${p_foliotenant:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .tenant' "$folioServicesJson")}"
-  sFOLIOTENANT="$session"FOLIOTENANT
+  sessionFOLIOTENANT="$session"FOLIOTENANT
   declare -g -x "$session"FOLIOUSER="${p_foliouser:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .username' "$folioServicesJson")}"
-  sFOLIOUSER="$session"FOLIOUSER
+  sessionFOLIOUSER="$session"FOLIOUSER
   declare -g "$session"PASSWORD="$password"
-  sPASSWORD="$session"PASSWORD
+  sessionPASSWORD="$session"PASSWORD
   return 1
 }
 
@@ -235,15 +235,15 @@ function getToken {
   local respHeaders
   local statusHeader
 
-  echo "$sFOLIOTENANT is ${!sFOLIOTENANT}"
+  echo "$sessionFOLIOTENANT is ${!sessionFOLIOTENANT}"
 
   respHeadersFile="h-$(uuidgen).txt"
-  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sFOLIOTENANT}"  -d "{ \"username\": \"${!sFOLIOUSER}\", \"password\": \"${!sPASSWORD}\"}" "${!sFOLIOHOST}/authn/login-with-expiry")
+  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login-with-expiry")
   respHeaders=$(<"$respHeadersFile")
   rm "$respHeadersFile"
   statusHeader=$(echo "${respHeaders}" | head -1)
   if [[ ! $statusHeader == *" 201 "* ]]; then
-    printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sFOLIOUSER}" "${!sFOLIOTENANT}" "${!sFOLIOHOST}"
+    printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
     printf "%s\n" "$respHeaders"
     if [[ $authResponse = "{"*"}" ]]; then
       printf "Response : \"%s\"\n" "$(echo "$authResponse" | jq -r '.errors[]?.message')"
@@ -253,18 +253,18 @@ function getToken {
     return || exit 1
   else
     declare -g -x "$session"TOKEN="$(echo "$respHeaders" | grep folioAccessToken | tr -d '\r' | cut -d "=" -f2 | cut -d ";" -f1)"
-    sTOKEN="$session"TOKEN
+    sessionTOKEN="$session"TOKEN
     ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\n" "$respHeaders"
     declare -g -x "$session"expiration="$(echo "$authResponse" | jq -r '.accessTokenExpiration')"
-    sExpiration="$session"expiration
-    ( $viewContext ) && echo "Expiration: ${!sExpiration}"
+    sessionExpiration="$session"expiration
+    ( $viewContext ) && echo "Expiration: ${!sessionExpiration}"
   fi
 }
 
 # Check token expiration and issue new login if expired
 function maybeRefreshLogin {
-  if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sExpiration}" ]]; then
-    ($viewContext) && echo "Token expired ${!sExpiration}. Renewing login before request."
+  if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sessionExpiration}" ]]; then
+    ($viewContext) && echo "Token expired ${!sessionExpiration}. Renewing login before request."
     getToken
   fi
 }
@@ -272,27 +272,27 @@ function maybeRefreshLogin {
 # BEGIN processing
 
 # Name session variables
-sFOLIOHOST="$session"FOLIOHOST
-sFOLIOTENANT="$session"FOLIOTENANT
-sFOLIOUSER="$session"FOLIOUSER
-sTOKEN="$session"TOKEN
-sExpiration="$session"expiration
+sessionFOLIOHOST="$session"FOLIOHOST
+sessionFOLIOTENANT="$session"FOLIOTENANT
+sessionFOLIOUSER="$session"FOLIOUSER
+sessionTOKEN="$session"TOKEN
+sessionExpiration="$session"expiration
 
 if ( $viewContext ); then
-  printf "Host (%s):     %s\n" "$sFOLIOHOST" "${!sFOLIOHOST}"
-  printf "Tenant (%s): %s\n"  "$sFOLIOTENANT" "${!sFOLIOTENANT}"
-  printf "User (%s):     %s\n" "$sFOLIOUSER" "${!sFOLIOUSER}"
-  printf "Token (%s):        %s\n" "$sTOKEN" "${!sTOKEN}"
-  printf "Token expires: %s\n" "${!sExpiration}"
+  printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "${!sessionFOLIOHOST}"
+  printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
+  printf "User (%s):     %s\n" "$sessionFOLIOUSER" "${!sessionFOLIOUSER}"
+  printf "Token (%s):        %s\n" "$sessionTOKEN" "${!sessionTOKEN}"
+  printf "Token expires: %s\n" "${!sessionExpiration}"
   printf "\n"
 fi
 
 # Clear login credentials
 if ( $exit ); then
-  if [[ -z "${!sTOKEN}" ]]; then
+  if [[ -z "${!sessionTOKEN}" ]]; then
    printf "\nI was asked to log out but there was already no access token found. Clearing env vars.\n\n"
   else
-   printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "${!sFOLIOUSER}" "${!sFOLIOTENANT}" "${!sFOLIOHOST}"
+   printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
   fi
   clearAuthCache
   return || exit 1
@@ -305,7 +305,7 @@ if ( $gotAccountMatchString || $gotAuthParameters ); then
     passwordPrompt
     getToken
   fi
-elif  [[ -z "${!sTOKEN}" ]]; then
+elif  [[ -z "${!sessionTOKEN}" ]]; then
   if [[ -z "$p_endpoint" ]]; then
     printf "\nGot no Okapi token, and no API was given for requests. Want to select from lists of FOLIO accounts and FOLIO endpoints? "
   else
@@ -363,12 +363,12 @@ fi
 
 # Build and execute curl request to Okapi.
 if [[ -n "$endpoint" ]]; then
-  tenantHeader="x-okapi-tenant: ${!sFOLIOTENANT}"
+  tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
   contentTypeHeader="Content-type: $contentType"
 
   # extension doesn't start with '/' or '?'?  Insert '/'
   [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
-  url="${!sFOLIOHOST}"/"$endpoint""$endpointExtension"
+  url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
   # Set record limit to 1.000.000 ~ "no limit"
   if ( $noRecordLimit ); then
     if [[ $url == *"?"* ]]; then
@@ -379,7 +379,7 @@ if [[ -n "$endpoint" ]]; then
   fi
 
   maybeRefreshLogin
-  tokenHeader="x-okapi-token: ${!sTOKEN}"
+  tokenHeader="x-okapi-token: ${!sessionTOKEN}"
 
   # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
   if [[ -z "$file" ]] && [[ -z "$data" ]]; then
