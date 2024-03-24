@@ -279,11 +279,11 @@ sTOKEN="$session"TOKEN
 sExpiration="$session"expiration
 
 if ( $viewContext ); then
-  printf "Host (FOLIOHOST):     %s\n" "${!sFOLIOHOST}"
-  printf "Tenant (FOLIOTENANT): %s\n" "${!sFOLIOTENANT}"
-  printf "User (FOLIOUSER):     %s\n" "${!sFOLIOUSER}"
-  printf "Token (TOKEN):        %s\n" "${!sTOKEN}"
-  printf "Token expires:         %s\n" "${!sExpiration}"
+  printf "Host (%s):     %s\n" "$sFOLIOHOST" "${!sFOLIOHOST}"
+  printf "Tenant (%s): %s\n"  "$sFOLIOTENANT" "${!sFOLIOTENANT}"
+  printf "User (%s):     %s\n" "$sFOLIOUSER" "${!sFOLIOUSER}"
+  printf "Token (%s):        %s\n" "$sTOKEN" "${!sTOKEN}"
+  printf "Token expires: %s\n" "${!sExpiration}"
   printf "\n"
 fi
 
