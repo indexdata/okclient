@@ -1,5 +1,5 @@
 function __okclient_showHelp {
-    printf "Usage: . ./ok.sh [options] [folio api path]\n\n"
+    printf "Usage: . ok.sh; OK [ options ] [ folio api path [query string] ]\n\n"
     printf "Options: \n"
     printf "  -A <account match string>:    find FOLIO account from register (folio-services.json) by match string,\n"
     printf "                                '-A ?' shows list of all registered accounts\n"
@@ -82,6 +82,7 @@ function __okclient_define_session_env_vars {
 }
 
 function __okclient_showSessionVariables {
+  __okclient_define_session_env_vars
   printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "${!sessionFOLIOHOST}"
   printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
   printf "User (%s):     %s\n" "$sessionFOLIOUSER" "${!sessionFOLIOUSER}"
@@ -103,6 +104,8 @@ function __okclient_clearAuthCache {
 
 # Fetch accounts list from json register, optionally filtered by match string
 function __okclient_getFolioAccount {
+  local accountsCount
+
   if ( $viewContext ); then
     printf "Account match string: %s\n" "$accountMatchString"
   fi
@@ -209,13 +212,15 @@ function __okclient_select_account_and_log_in {
     fi
   elif  [[ -z "${!sessionTOKEN}" ]]; then
     # has no existing login
-    if [[ -z "$p_endpoint" ]]; then
+    if [[ -z "$p_endpoint" ]] && $viewContext ; then
+      return
+    elif [[ -z "$p_endpoint" ]]; then
       printf "\nGot no Okapi token, and no API was given for requests. Want to select from lists of FOLIO accounts and FOLIO endpoints? "
     else
       printf "\nGot no Okapi token for making requests. Continue with list of FOLIO accounts to log in to?"
     fi
     read -r -p ' [Y/n]? ' choice
-    choice=${choice:-Y}
+    local choice=${choice:-Y}
     case "$choice" in
       n|N) return;;
       *) accountMatchString="?"
@@ -273,12 +278,12 @@ function __okclient_maybeRefreshLogin {
 }
 
 function __okclient_build_run_curl_request {
-  tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
-    contentTypeHeader="Content-type: $contentType"
+    local tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
+    local contentTypeHeader="Content-type: $contentType"
 
     # extension doesn't start with '/' or '?'?  Insert '/'
     [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
-    url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
+    local url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
     # Set record limit to 1.000.000 ~ "no limit"
     if ( $noRecordLimit ); then
       if [[ $url == *"?"* ]]; then
@@ -289,7 +294,7 @@ function __okclient_build_run_curl_request {
     fi
 
     __okclient_maybeRefreshLogin
-    tokenHeader="x-okapi-token: ${!sessionTOKEN}"
+    local tokenHeader="x-okapi-token: ${!sessionTOKEN}"
 
     # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
     if [[ -z "$file" ]] && [[ -z "$data" ]]; then
@@ -304,7 +309,17 @@ function __okclient_build_run_curl_request {
     fi
 }
 
-function okclient {
+function gotFolioSession {
+  session=${1:+$1"_"}
+  __okclient_define_session_env_vars
+  if [[ -n "${!sessionTOKEN}" ]] && [[ -n "${!sessionFOLIOTENANT}" ]] && [[ -n "${!sessionFOLIOUSER}" ]] &&  [[ -n "${!sessionFOLIOHOST}" ]] ; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function OK {
   if [ "$1" == "-?" ]; then
     __okclient_showHelp
   elif [ "$#" -eq 0 ] ; then
@@ -351,7 +366,7 @@ function okclient {
         j) jqCommand=$OPTARG;;
         A) accountMatchString=$OPTARG
            gotAccountMatchString=true;;
-        S) session=$OPTARG"_";;
+        S) session=${OPTARG:+$OPTARG"_"};;
         X) method="-X${OPTARG^^}";;
         s) s="-s";;
         o) additionalCurlOptions=$OPTARG;;
