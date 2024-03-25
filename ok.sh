@@ -264,6 +264,14 @@ function __okclient_select_endpoint {
   fi
 }
 
+# Check token expiration and issue new login if expired
+function __okclient_maybeRefreshLogin {
+  if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sessionExpiration}" ]]; then
+    ($viewContext) && echo "Token expired ${!sessionExpiration}. Renewing login before request."
+    __okclient_getToken
+  fi
+}
+
 function __okclient_build_run_curl_request {
   tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
     contentTypeHeader="Content-type: $contentType"
@@ -413,15 +421,4 @@ function okclient {
 
 }
 
-
-
-# Send the login request to Okapi
-
-# Check token expiration and issue new login if expired
-function __okclient_maybeRefreshLogin {
-  if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sessionExpiration}" ]]; then
-    ($viewContext) && echo "Token expired ${!sessionExpiration}. Renewing login before request."
-    __okclient_getToken
-  fi
-}
 
