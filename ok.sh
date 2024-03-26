@@ -72,7 +72,7 @@ function __okclient_getToken {
   local respHeaders
   local statusHeader
 
-  printf "%s is %s\n\n" "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
+  [[ -z "$s" ]] && printf "%s is %s\n\n" "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
 
   respHeadersFile="h-$(uuidgen).txt"
   authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login-with-expiry")
@@ -148,7 +148,7 @@ function __okclient_getFolioAccount {
     accountsCount="$(jq -r --arg tag "$accountMatchString" '.folios[].accounts[].tag|select(contains($tag))' "$folioServicesJson" | wc -l)"
     if [[ "$accountsCount" == "1" ]]; then
       accountTag=$(jq -r --arg tag "$accountMatchString" '.folios[].accounts[].tag|select(contains($tag))' "$folioServicesJson");
-      printf "Selected FOLIO account: %s\n" "$accountTag"
+      [[ -z "$s" ]] &&  printf "Selected FOLIO account: %s\n" "$accountTag"
     elif [[ "$accountsCount" == "0" ]]; then
       printf "\nChoose a FOLIO service and account to log in to (listing them because none contains the string '%s')\n\n" "$accountMatchString"
       select accountTag in $(jq -r '.folios[].accounts[].tag' "$folioServicesJson")
@@ -237,7 +237,6 @@ function __okclient_select_account_and_log_in {
     if [[ $? -eq 1 ]]; then
       __okclient_promptForPassword
       __okclient_getToken
-      return 0
     fi
   elif  [[ -z "${!sessionTOKEN}" ]]; then
     # has no existing login
@@ -453,8 +452,7 @@ function OK {
   else
     if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "${!sessionTOKEN}" ]]; then
       __okclient_select_account_and_log_in
-      if [[ $? -eq 1 ]]; then
-        # Got a token, determine API
+      if [[ -n "${!sessionTOKEN}" ]]; then
         __okclient_select_endpoint
       fi
     else
