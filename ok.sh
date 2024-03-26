@@ -71,9 +71,7 @@ function __okclient_getToken {
   local authResponse
   local respHeaders
   local statusHeader
-
-  [[ -z "$s" ]] && printf "%s is %s\n\n" "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
-
+  [[ -z "$s" ]] && printf "Logging in to %s %s\n\n" "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
   respHeadersFile="h-$(uuidgen).txt"
   authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login-with-expiry")
   respHeaders=$(<"$respHeadersFile")
