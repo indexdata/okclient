@@ -328,8 +328,13 @@ function __okclient_build_run_curl_request {
     # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
     if [[ -z "$file" ]] && [[ -z "$data" ]]; then
       ( $viewContext ) &&  echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
-      [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
-      [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+      if [[ -n "$query" ]]; then
+        [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
+        [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+      else
+        [ -n "$jqCommand" ] && curl -s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
+        [ -z "$jqCommand" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+      fi
     else
       ( $viewContext ) && [ -n "$file" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
       ( $viewContext ) && [ -n "$data" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
