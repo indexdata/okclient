@@ -353,6 +353,16 @@ function gotFolioSession {
   fi
 }
 
+# Find working dir, even if the script is symlinked, to have path to the registry json with accounts and APIs.
+SOURCE=${BASH_SOURCE[0]}
+while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+  SOURCE=$(readlink "$SOURCE")
+  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+export folioServicesJson="$DIR"/folio-services.json
+
 function OK {
   if [ "$1" == "-?" ]; then
     __okclient_showHelp
@@ -426,16 +436,6 @@ function OK {
   p_endpoint="${script_args[0]}"
   contentType=${contentType:-"application/json"}
 
-  # Find working dir, even if the script is symlinked, to have path to the registry json with accounts and APIs.
-  SOURCE=${BASH_SOURCE[0]}
-  while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-    DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
-    SOURCE=$(readlink "$SOURCE")
-    [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-  done
-  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
-  folioServicesJson="$DIR"/folio-services.json
-
   __okclient_define_session_env_vars
 
   if ( $viewContext ); then
@@ -469,5 +469,4 @@ function OK {
   fi
 
 }
-
 
