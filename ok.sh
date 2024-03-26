@@ -36,7 +36,34 @@ function __okclient_showHelp {
     printf "  Get the names of all loan types:                  . ./ok.sh loan-types -u -j '.loantypes[].name'\n"
     printf "  Find instances with titles like \"magazine -q\":    . ./ok.sh instance-storage/instances -q \"title=\"magazine - q*\" \n"
     printf "  If not logged in: select account, api from lists, GET: . ./ok.sh\n"
+}
 
+# fallback to pre-RTR login protocol
+function __okclient_getNonExpiryToken {
+  local respHeadersFile
+  local authResponse
+  local respHeaders
+  local statusHeader
+  respHeadersFile="h-$(uuidgen).txt"
+  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login")
+  respHeaders=$(<"$respHeadersFile")
+  rm "$respHeadersFile"
+  statusHeader=$(echo "${respHeaders}" | head -1)
+  if [[ ! $statusHeader == *" 201 "* ]]; then
+      printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
+      printf "%s\n" "$respHeaders"
+      if [[ $authResponse = "{"*"}" ]]; then
+        printf "Response : \"%s\"\n" "$(echo "$authResponse" | jq -r '.errors[]?.message')"
+      else
+        printf "%s\n" "$authResponse"
+      fi
+      return || exit 1
+  else
+    declare -g -x "$session"TOKEN="$(echo "$respHeaders" | grep x-okapi-token | tr -d '\r' | cut -d " " -f2)"
+    sessionTOKEN="$session"TOKEN
+    # shellcheck disable=SC2116
+    declare -g -x "$session"expiration="$(echo "2034-01-01T01:00:00Z")"
+  fi
 }
 
 function __okclient_getToken {
@@ -52,7 +79,9 @@ function __okclient_getToken {
   respHeaders=$(<"$respHeadersFile")
   rm "$respHeadersFile"
   statusHeader=$(echo "${respHeaders}" | head -1)
-  if [[ ! $statusHeader == *" 201 "* ]]; then
+  if [[ $statusHeader == *" 404 "* ]]; then
+    __okclient_getNonExpiryToken
+  elif [[ ! $statusHeader == *" 201 "* ]]; then
     printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
     printf "%s\n" "$respHeaders"
     if [[ $authResponse = "{"*"}" ]]; then
