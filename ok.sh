@@ -364,7 +364,7 @@ function OK {
   if [ "$1" == "-?" ]; then
     __okclient_showHelp
   elif [ "$#" -eq 0 ] ; then
-    printf "FOLIO client script  (do  [ ./ok.sh -? ]  to see options and examples)\n"
+    printf "FOLIO client script  (do  [ OK -? ]  to see options and examples)\n"
   fi
 
   OPTIND=1
