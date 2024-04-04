@@ -276,7 +276,7 @@ function __okclient_select_endpoint {
       matchCount=$(echo "$OPTS" | wc -l)
       if [[ "$matchCount" == "1" ]]; then
         endpoint="$OPTS"
-        printf "Selecting unique endpoint match: %s\n" "$endpoint"
+        [[ -z "$s" ]] && printf "Selecting unique endpoint match: %s\n" "$endpoint"
       else
         if [[ -z "$endpointMatchString" ]]; then
           printf "\nCurrently registered FOLIO API paths to pick from:\n\n"
@@ -289,7 +289,7 @@ function __okclient_select_endpoint {
           done
       fi
     fi
-    printf "\n"
+    [[ -z "$s" ]] && printf "\n"
   else
     endpoint="$p_endpoint"
   fi
