@@ -1,4 +1,4 @@
-function __okclient_showHelp {
+function __okclient_show_help {
     printf "Usage: . ok.sh; OK [ options ] [ folio api path [query string] ]\n\n"
     printf "Options: \n"
     printf "  -A <account match string>:    find FOLIO account from register (folio-services.json) by match string,\n"
@@ -39,7 +39,7 @@ function __okclient_showHelp {
 }
 
 # fallback to pre-RTR login protocol
-function __okclient_getNonExpiryToken {
+function __okclient_get_non_expiry_token {
   local respHeadersFile
   local authResponse
   local respHeaders
@@ -66,7 +66,7 @@ function __okclient_getNonExpiryToken {
   fi
 }
 
-function __okclient_getToken {
+function __okclient_get_token {
   local respHeadersFile
   local authResponse
   local respHeaders
@@ -78,7 +78,7 @@ function __okclient_getToken {
   rm "$respHeadersFile"
   statusHeader=$(echo "${respHeaders}" | head -1)
   if [[ $statusHeader == *" 404 "* ]]; then
-    __okclient_getNonExpiryToken
+    __okclient_get_non_expiry_token
   elif [[ ! $statusHeader == *" 201 "* ]]; then
     printf "\n\nAuthentication failed for user [%s] to %s@%s" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
     printf "%s\n" "$respHeaders"
@@ -109,7 +109,7 @@ function __okclient_define_session_env_vars {
   sessionExpiration="$session"expiration
 }
 
-function __okclient_showSessionVariables {
+function __okclient_show_session_variables {
   __okclient_define_session_env_vars
   printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "${!sessionFOLIOHOST}"
   printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
@@ -120,7 +120,7 @@ function __okclient_showSessionVariables {
 }
 
 # shellcheck disable=SC2140
-function __okclient_clearAuthCache {
+function __okclient_clear_auth_cache {
   declare -g -x "$session"FOLIOHOST=""
   declare -g -x "$session"FOLIOTENANT=""
   declare -g -x "$session"FOLIOUSER=""
@@ -131,7 +131,7 @@ function __okclient_clearAuthCache {
 }
 
 # Fetch accounts list from json register, optionally filtered by match string
-function __okclient_getFolioAccount {
+function __okclient_get_folio_account {
   local accountsCount
 
   if ( $viewContext ); then
@@ -170,10 +170,10 @@ function __okclient_getFolioAccount {
 }
 
 # Potentially present list of services to choose from, set account and login credentials
-function __okclient_getAndSetAuthEnvVars {
+function __okclient_get_set_auth_env_values {
   if ( $gotAccountMatchString ); then
-    __okclient_clearAuthCache
-    if ! __okclient_getFolioAccount; then
+    __okclient_clear_auth_cache
+    if ! __okclient_get_folio_account; then
       return 1
     fi
   else
@@ -182,7 +182,7 @@ function __okclient_getAndSetAuthEnvVars {
         printf "Login initiated by -u but cannot determine FOLIO account to use without also either -A or both of -t and -h\n"
         return 2
       else
-        __okclient_clearAuthCache
+        __okclient_clear_auth_cache
       fi
     fi
     if [[ -n "$p_foliotenant" ]]; then
@@ -214,7 +214,7 @@ function __okclient_getAndSetAuthEnvVars {
 }
 
 # Prompt user for password unless already supplied (on command line or cached from previous login)
-function __okclient_promptForPassword {
+function __okclient_prompt_for_password {
     if [[ -z "$p_password" ]] ; then
       printf "\nEnter password"
       [[ -n "$accountTag" ]] && printf " for %s %s %s %s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "${!sessionFOLIOUSER}"
@@ -236,9 +236,9 @@ function __okclient_promptForPassword {
 function __okclient_select_account_and_log_in {
   if ( $gotAccountMatchString || $gotAuthParameters ); then
     # received request to login
-    if __okclient_getAndSetAuthEnvVars; then
-      if __okclient_promptForPassword; then
-        __okclient_getToken
+    if __okclient_get_set_auth_env_values; then
+      if __okclient_prompt_for_password; then
+        __okclient_get_token
       fi
     fi
   elif  [[ -z "${!sessionTOKEN}" ]]; then
@@ -247,6 +247,7 @@ function __okclient_select_account_and_log_in {
       return
     elif [[ -z "$p_endpoint" ]]; then
       printf "\nGot no Okapi token for making requests. Want to select login and API from lists of FOLIO accounts and FOLIO endpoints? "
+      [[ -z "$endpointMatchString" ]] && endpointMatchString="?"
     else
       printf "\nGot no Okapi token for making requests. Continue with list of FOLIO accounts to log in to?"
     fi
@@ -256,9 +257,9 @@ function __okclient_select_account_and_log_in {
       n|N) return 100;;
       *) accountMatchString="?"
          gotAccountMatchString=true
-         if __okclient_getAndSetAuthEnvVars ; then
-           if __okclient_promptForPassword ; then
-             __okclient_getToken;
+         if __okclient_get_set_auth_env_values ; then
+           if __okclient_prompt_for_password ; then
+             __okclient_get_token;
            fi
          fi
     esac
@@ -286,7 +287,7 @@ function __okclient_select_endpoint {
         endpoint="$OPTS"
         [[ -z "$s" ]] && printf "Selecting unique endpoint match: %s\n" "$endpoint"
       else
-        if [[ -z "$endpointMatchString" ]]; then
+        if [[ -z "$endpointMatchString" ]] || [[ "$endpointMatchString" == "?" ]]; then
           printf "\nCurrently registered FOLIO API paths to pick from:\n\n"
         else
           printf "\nCurrently registered FOLIO API paths matching '%s':\n\n" "$endpointMatchString"
@@ -304,14 +305,14 @@ function __okclient_select_endpoint {
 }
 
 # Check token expiration and issue new login if expired
-function __okclient_maybeRefreshLogin {
+function __okclient_maybe_refresh_token {
   if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sessionExpiration}" ]]; then
     ($viewContext) && echo "Token expired ${!sessionExpiration}. Renewing login before request."
-    __okclient_getToken
+    __okclient_get_token
   fi
 }
 
-function __okclient_build_run_curl_request {
+function __okclient_compose_run_curl_request {
     local tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
     local contentTypeHeader="Content-type: $contentType"
 
@@ -327,7 +328,7 @@ function __okclient_build_run_curl_request {
       fi
     fi
 
-    __okclient_maybeRefreshLogin
+    __okclient_maybe_refresh_token
     local tokenHeader="x-okapi-token: ${!sessionTOKEN}"
 
     # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
@@ -370,7 +371,7 @@ folioServicesJson="$DIR"/folio-services.json
 
 function OK {
   if [ "$1" == "-?" ]; then
-    __okclient_showHelp
+    __okclient_show_help
   elif [ "$#" -eq 0 ] ; then
     printf "FOLIO client script  (do  [ OK -? ]  to see options and examples)\n"
   fi
@@ -444,7 +445,7 @@ function OK {
   __okclient_define_session_env_vars
 
   if ( $viewContext ); then
-    __okclient_showSessionVariables
+    __okclient_show_session_variables
   fi
 
   if ( $exit ); then
@@ -454,7 +455,7 @@ function OK {
     else
      printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "${!sessionFOLIOUSER}" "${!sessionFOLIOTENANT}" "${!sessionFOLIOHOST}"
     fi
-    __okclient_clearAuthCache
+    __okclient_clear_auth_cache
   else
     if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "${!sessionTOKEN}" ]]; then
       __okclient_select_account_and_log_in
@@ -468,7 +469,7 @@ function OK {
 
     if [[ -n "$endpoint" ]]; then
       # Determined an API, run curl request
-      __okclient_build_run_curl_request
+      __okclient_compose_run_curl_request
     fi
   fi
 
