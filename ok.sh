@@ -87,7 +87,7 @@ function __okclient_getToken {
     else
       printf "%s\n" "$authResponse"
     fi
-    return || exit 1
+    return 1
   else
     declare -g -x "$session"TOKEN="$(echo "$respHeaders" | grep folioAccessToken | tr -d '\r' | cut -d "=" -f2 | cut -d ";" -f1)"
     sessionTOKEN="$session"TOKEN
@@ -96,6 +96,7 @@ function __okclient_getToken {
     sessionExpiration="$session"expiration
     ( $viewContext ) && echo "Expiration: ${!sessionExpiration}"
   fi
+  return 0
 }
 
 function __okclient_define_session_env_vars {
@@ -163,20 +164,23 @@ function __okclient_getFolioAccount {
   fi
   if [[ -z "$accountTag" ]]; then
       printf "\n Account selection cancelled\n"
-      return || exit 1
+      return 100
   fi
+  return 0
 }
 
 # Potentially present list of services to choose from, set account and login credentials
-function __okclient_setAuthEnvVars {
+function __okclient_getAndSetAuthEnvVars {
   if ( $gotAccountMatchString ); then
     __okclient_clearAuthCache
-    __okclient_getFolioAccount
+    if ! __okclient_getFolioAccount; then
+      return 1
+    fi
   else
     if [[ -n "$p_foliouser" ]]; then
       if [[ -z "$p_foliotenant" ]] || [[ -z "$p_foliohost" ]]; then
         printf "Login initiated by -u but cannot determine FOLIO account to use without also either -A or both of -t and -h\n"
-        return 0
+        return 2
       else
         __okclient_clearAuthCache
       fi
@@ -184,13 +188,13 @@ function __okclient_setAuthEnvVars {
     if [[ -n "$p_foliotenant" ]]; then
       if [[ -z "$p_foliouser" ]] || [[ -z "$p_foliohost" ]]; then
         printf "Login initiated by -t but cannot determine FOLIO account to use without also either -A or both of -u and -h\n"
-        return 0
+        return 2
       fi
     fi
     if [[ -n "$p_foliohost" ]]; then
       if [[ -z "$p_foliotenant" ]] || [[ -z "$p_foliouser" ]]; then
         printf "Login initiated by -h but cannot determine FOLIO account to use without also either -A or both of -u and -t\n"
-        return 0
+        return 2
       fi
     fi
   fi
@@ -206,7 +210,7 @@ function __okclient_setAuthEnvVars {
   sessionFOLIOUSER="$session"FOLIOUSER
   declare -g "$session"PASSWORD="$password"
   sessionPASSWORD="$session"PASSWORD
-  return 1
+  return 0
 }
 
 # Prompt user for password unless already supplied (on command line or cached from previous login)
@@ -218,7 +222,7 @@ function __okclient_promptForPassword {
       read -r -s password
       if [[ -z "$password" ]]; then
         printf "\n Login cancelled\n"
-        return || exit 1
+        return 100
       else
         printf "\n"
       fi
@@ -226,36 +230,40 @@ function __okclient_promptForPassword {
     else
       declare -g "$session"PASSWORD="$p_password"
     fi
+    return 0
 }
 
 function __okclient_select_account_and_log_in {
   if ( $gotAccountMatchString || $gotAuthParameters ); then
     # received request to login
-    __okclient_setAuthEnvVars
-    if [[ $? -eq 1 ]]; then
-      __okclient_promptForPassword
-      __okclient_getToken
+    if __okclient_getAndSetAuthEnvVars; then
+      if __okclient_promptForPassword; then
+        __okclient_getToken
+      fi
     fi
   elif  [[ -z "${!sessionTOKEN}" ]]; then
     # has no existing login
     if [[ -z "$p_endpoint" ]] && $viewContext ; then
       return
     elif [[ -z "$p_endpoint" ]]; then
-      printf "\nGot no Okapi token, and no API was given for requests. Want to select from lists of FOLIO accounts and FOLIO endpoints? "
+      printf "\nGot no Okapi token for making requests. Want to select login and API from lists of FOLIO accounts and FOLIO endpoints? "
     else
       printf "\nGot no Okapi token for making requests. Continue with list of FOLIO accounts to log in to?"
     fi
     read -r -p ' [Y/n]? ' choice
     local choice=${choice:-Y}
     case "$choice" in
-      n|N) return;;
+      n|N) return 100;;
       *) accountMatchString="?"
          gotAccountMatchString=true
-         __okclient_setAuthEnvVars
-         __okclient_promptForPassword
-         __okclient_getToken;;
+         if __okclient_getAndSetAuthEnvVars ; then
+           if __okclient_promptForPassword ; then
+             __okclient_getToken;
+           fi
+         fi
     esac
   fi
+  return 0
 }
 
 function __okclient_select_endpoint {
