@@ -413,7 +413,7 @@ function OK {
         E) endpointMatchString=$OPTARG;;
         e) endpointExtension=$OPTARG;;
         f) file=$OPTARG;;
-        j) jqCommand=$OPTARG;;
+        j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) | .[] };;
         A) accountMatchString=$OPTARG
            gotAccountMatchString=true;;
         S) session=${OPTARG:+$OPTARG"_"};;
