@@ -236,11 +236,7 @@ function __okclient_prompt_for_password {
 function __okclient_select_account_and_log_in {
   if ( $gotAccountMatchString || $gotAuthParameters ); then
     # received request to login
-    if __okclient_get_set_auth_env_values; then
-      if __okclient_prompt_for_password; then
-        __okclient_get_token
-      fi
-    fi
+    __okclient_get_set_auth_env_values &&  __okclient_prompt_for_password && __okclient_get_token
   elif  [[ -z "${!sessionTOKEN}" ]]; then
     # has no existing login
     if [[ -z "$p_endpoint" ]] && $viewContext ; then
@@ -313,12 +309,10 @@ function __okclient_maybe_refresh_token {
 }
 
 function __okclient_compose_run_curl_request {
-    local tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
-    local contentTypeHeader="Content-type: $contentType"
-
     # extension doesn't start with '/' or '?'?  Insert '/'
     [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
     local url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
+
     # Set record limit to 1.000.000 ~ "no limit"
     if ( $noRecordLimit ); then
       if [[ $url == *"?"* ]]; then
@@ -330,6 +324,8 @@ function __okclient_compose_run_curl_request {
 
     __okclient_maybe_refresh_token
     local tokenHeader="x-okapi-token: ${!sessionTOKEN}"
+    local tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
+    local contentTypeHeader="Content-type: $contentType"
 
     # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
     if [[ -z "$file" ]] && [[ -z "$data" ]]; then
@@ -445,10 +441,7 @@ function OK {
   contentType=${contentType:-"application/json"}
 
   __okclient_define_session_env_vars
-
-  if ( $viewContext ); then
-    __okclient_show_session_variables
-  fi
+  ( $viewContext ) && __okclient_show_session_variables
 
   if ( $exit ); then
     # Clear login credentials and stop on -x
@@ -461,19 +454,8 @@ function OK {
   else
     if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "${!sessionTOKEN}" ]]; then
       __okclient_select_account_and_log_in
-      if [[ -n "${!sessionTOKEN}" ]]; then
-        __okclient_select_endpoint
-      fi
-    else
-      # Already got a token, determine API
-      __okclient_select_endpoint
     fi
-
-    if [[ -n "$endpoint" ]]; then
-      # Determined an API, run curl request
-      __okclient_compose_run_curl_request
-    fi
+    [[ -n "${!sessionTOKEN}" ]] &&  __okclient_select_endpoint
+    [[ -n "$endpoint" ]] && __okclient_compose_run_curl_request
   fi
-
 }
-
