@@ -26,17 +26,18 @@ function __okclient_show_help {
     printf "                                 (does not invoke curl -v, use -o \"-v\" for that).\n"
     printf "  -?                            show this message\n"
     printf "\n  EXAMPLES:\n"
-    printf "  Login, GET instances:                             OK -A diku@localhost -p admin instance-storage/instances\n"
-    printf "  Login, provide password interactively:            OK -A diku@localhost\n"
+    printf "  Log in and GET instances:                         OK -A diku@localhost -p admin instance-storage/instances\n"
+    printf "  Log in, provide password interactively:           OK -A diku@localhost\n"
     printf "  Get instances:                                    OK instance-storage/instances\n"
+    printf "  Get instances array:                              OK instance-storage/instances -j '.instances[]'\n"
+    printf "  - alternatively use keyword RECORDS with -j       OK instance-storage/instances -j 'RECORDS'\n"
     printf "  Get instance titles with jq:                      OK instance-storage/instances -j '.instances[].title'\n"
-    printf "  - alternatively use keyword RECORDS with -j       OK instance-storage/instances -j 'RECORDS | .title'\n"
     printf "  Select from list of APIs with 'loan' in the path: OK -E loan\n"
     printf "  Create new loan type:                             OK -m post -d '{\"name\": \"my loan type\"}' loan-types\n"
     printf "  Get the names of up to 10 loan types:             OK loan-types -j '.loantypes[].name'\n"
-    printf "  Get the names of all loan types:                  OK loan-types -n -j '.loantypes[].name'\n"
+    printf "  Get the names of all loan types with -n:          OK loan-types -n -j '.loantypes[].name'\n"
     printf "  - alternatively use keyword RECORDS with -j       OK loan-types -n -j 'RECORDS | .name'\n"
-    printf "  Find instances with titles like \"magazine -q\":    OK instance-storage/instances -q \"title=\"magazine - q*\" \n"
+    printf "  Find instances with titles like \"magazine - q\":   OK instance-storage/instances -q \"title=\"magazine - q*\" \n"
     printf "  If not logged in: select account, GET APIs from lists: OK\n"
 }
 
@@ -92,6 +93,7 @@ function __okclient_get_token {
     fi
     return 1
   else
+    # Extract token from response header
     declare -g -x "$session"TOKEN="$(echo "$respHeaders" | grep folioAccessToken | tr -d '\r' | cut -d "=" -f2 | cut -d ";" -f1)"
     sessionTOKEN="$session"TOKEN
     ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\n" "$respHeaders"
