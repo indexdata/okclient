@@ -26,16 +26,18 @@ function __okclient_show_help {
     printf "                                 (does not invoke curl -v, use -o \"-v\" for that).\n"
     printf "  -?                            show this message\n"
     printf "\n  EXAMPLES:\n"
-    printf "  Login, GET instances:                             . ./ok.sh -A diku@localhost -p admin instance-storage/instances\n"
-    printf "  Login, provide password interactively:            . ./ok.sh -A diku@localhost\n"
-    printf "  Get instances:                                    . ./ok.sh instance-storage/instances\n"
-    printf "  Get instance titles with jq:                      . ./ok.sh instance-storage/instances -j '.instances[].title'\n"
-    printf "  Select from list of APIs with 'loan' in the path: . ./ok.sh -E loan\n"
-    printf "  Create new loan type:                             . ./ok.sh -m post -d '{\"name\": \"my loan type\"}' loan-types\n"
-    printf "  Get the names of up to 10 loan types:             . ./ok.sh loan-types -j '.loantypes[].name'\n"
-    printf "  Get the names of all loan types:                  . ./ok.sh loan-types -u -j '.loantypes[].name'\n"
-    printf "  Find instances with titles like \"magazine -q\":    . ./ok.sh instance-storage/instances -q \"title=\"magazine - q*\" \n"
-    printf "  If not logged in: select account, api from lists, GET: . ./ok.sh\n"
+    printf "  Login, GET instances:                             OK -A diku@localhost -p admin instance-storage/instances\n"
+    printf "  Login, provide password interactively:            OK -A diku@localhost\n"
+    printf "  Get instances:                                    OK instance-storage/instances\n"
+    printf "  Get instance titles with jq:                      OK instance-storage/instances -j '.instances[].title'\n"
+    printf "  - alternatively use keyword RECORDS with -j       OK instance-storage/instances -j 'RECORDS | .title'\n"
+    printf "  Select from list of APIs with 'loan' in the path: OK -E loan\n"
+    printf "  Create new loan type:                             OK -m post -d '{\"name\": \"my loan type\"}' loan-types\n"
+    printf "  Get the names of up to 10 loan types:             OK loan-types -j '.loantypes[].name'\n"
+    printf "  Get the names of all loan types:                  OK loan-types -n -j '.loantypes[].name'\n"
+    printf "  - alternatively use keyword RECORDS with -j       OK loan-types -n -j 'RECORDS | .name'\n"
+    printf "  Find instances with titles like \"magazine -q\":    OK instance-storage/instances -q \"title=\"magazine - q*\" \n"
+    printf "  If not logged in: select account, GET APIs from lists: OK\n"
 }
 
 # fallback to pre-RTR login protocol
@@ -368,13 +370,10 @@ DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 folioServicesJson="$DIR"/folio-services.json
 
 function OK {
-  if [ "$1" == "-?" ]; then
-    __okclient_show_help
-  elif [ "$#" -eq 0 ] ; then
-    printf "FOLIO client script  (do  [ OK -? ]  to see options and examples)\n"
-  fi
+  [[ "$1" == "-?" ]] &&  __okclient_show_help
+  [[ "$#" -eq 0 ]] && printf "FOLIO client script  (do  [ OK -? ]  to see options and examples)\n"
 
-  OPTIND=1
+  # Initialize parameters
   accountMatchString=""; gotAccountMatchString=false
   p_foliouser=""; p_foliotenant=""; p_foliohost=""; p_password=""; gotAuthParameters=false
   session=""
@@ -389,6 +388,7 @@ function OK {
   viewContext=false
   exit=false
 
+  OPTIND=1
   script_args=()
   while [ $OPTIND -le "$#" ]
   do
