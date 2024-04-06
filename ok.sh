@@ -333,12 +333,13 @@ function __okclient_compose_run_curl_request {
 
     # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
     if [[ -z "$file" ]] && [[ -z "$data" ]]; then
-      ( $viewContext ) &&  echo curl "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
+      ( $viewContext ) && echo curl $s "$method" ${query:+"--get --data-urlencode "$query}  -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
+      ( $viewContext ) && [[ -n "$jqCommand" ]] && echo "jq -r $jqCommand"
       if [[ -n "$query" ]]; then
-        [ -n "$jqCommand" ] && curl -s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
+        [ -n "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions | jq -r "$jqCommand"
         [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
       else
-        [ -n "$jqCommand" ] && curl -s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url"  $additionalCurlOptions | jq -r "$jqCommand"
+        [ -n "$jqCommand" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions | jq -r "$jqCommand"
         [ -z "$jqCommand" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
       fi
     else
@@ -413,7 +414,8 @@ function OK {
         E) endpointMatchString=$OPTARG;;
         e) endpointExtension=$OPTARG;;
         f) file=$OPTARG;;
-        j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) | .[] };;
+        j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) | .[] }
+           s="-s";;
         A) accountMatchString=$OPTARG
            gotAccountMatchString=true;;
         S) session=${OPTARG:+$OPTARG"_"};;
