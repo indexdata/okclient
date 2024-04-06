@@ -309,11 +309,11 @@ function __okclient_maybe_refresh_token {
 }
 
 function __okclient_compose_run_curl_request {
-    # extension doesn't start with '/' or '?'?  Insert '/'
+
+    # URL. If extension doesn't start with '/' or '?', insert '/'
     [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
     local url="${!sessionFOLIOHOST}"/"$endpoint""$endpointExtension"
-
-    # Set record limit to 1.000.000 ~ "no limit"
+    # Maybe set record limit to 1.000.000 ~ "no limit"
     if ( $noRecordLimit ); then
       if [[ $url == *"?"* ]]; then
         url="$url""&limit=1000000"
@@ -321,12 +321,13 @@ function __okclient_compose_run_curl_request {
         url="$url""?limit=1000000"
       fi
     fi
-
+    # Define headers, after potential RTR refresh
     __okclient_maybe_refresh_token
     local tokenHeader="x-okapi-token: ${!sessionTOKEN}"
     local tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
     local contentTypeHeader="Content-type: $contentType"
 
+    # Execute
     # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
     if [[ -z "$file" ]] && [[ -z "$data" ]]; then
       ( $viewContext ) && echo curl $s "$method" ${query:+"--get --data-urlencode "$query}  -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
@@ -374,29 +375,19 @@ function OK {
   fi
 
   OPTIND=1
-  accountMatchString=""
-  gotAccountMatchString=false
-  p_foliouser=""
-  p_foliotenant=""
-  p_foliohost=""
-  p_password=""
-  gotAuthParameters=false
+  accountMatchString=""; gotAccountMatchString=false
+  p_foliouser=""; p_foliotenant=""; p_foliohost=""; p_password=""; gotAuthParameters=false
   session=""
-  endpointMatchString=""
-  p_endpoint=""
-  endpoint=""
-  endpointExtension=""
-  query=""
-  noRecordLimit=false
+  endpointMatchString=""; p_endpoint=""; endpoint=""; endpointExtension=""; query=""; noRecordLimit=false
   method=""
   contentType=""
-  s=""
   file=""
   data=""
+  s=""
   additionalCurlOptions=""
   jqCommand=""
-  exit=false
   viewContext=false
+  exit=false
 
   script_args=()
   while [ $OPTIND -le "$#" ]
