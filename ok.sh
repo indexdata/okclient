@@ -30,14 +30,16 @@ function __okclient_show_help {
     printf "  Log in, provide password interactively:           OK -A diku@localhost\n"
     printf "  Get instances:                                    OK instance-storage/instances\n"
     printf "  Get instances array:                              OK instance-storage/instances -j '.instances[]'\n"
-    printf "  - alternatively use keyword RECORDS with -j       OK instance-storage/instances -j 'RECORDS'\n"
+    printf "  - alternatively use keyword RECORDS with -j       OK instance-storage/instances -j 'RECORDS[]'\n"
     printf "  Get instance titles with jq:                      OK instance-storage/instances -j '.instances[].title'\n"
     printf "  Select from list of APIs with 'loan' in the path: OK -E loan\n"
     printf "  Create new loan type:                             OK -m post -d '{\"name\": \"my loan type\"}' loan-types\n"
     printf "  Get the names of up to 10 loan types:             OK loan-types -j '.loantypes[].name'\n"
     printf "  Get the names of all loan types with -n:          OK loan-types -n -j '.loantypes[].name'\n"
-    printf "  - alternatively use keyword RECORDS with -j       OK loan-types -n -j 'RECORDS | .name'\n"
+    printf "  - alternatively use keyword RECORDS with -j       OK loan-types -n -j 'RECORDS[] | .name'\n"
     printf "  Find instances with titles like \"magazine - q\":   OK instance-storage/instances -q \"title=\"magazine - q*\" \n"
+    printf "  Tip: find the name of a collection property:      OK material-types -j 'keys[]'\n"
+    printf "  Tip: get property names of a record from an API:  OK item-storage/items -j 'RECORDS[0] | keys[]'\n"
     printf "  If not logged in: select account, GET APIs from lists: OK\n"
 }
 
@@ -404,7 +406,7 @@ function OK {
         E) endpointMatchString=$OPTARG;;
         e) endpointExtension=$OPTARG;;
         f) file=$OPTARG;;
-        j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) | .[] }
+        j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) }
            s="-s";;
         A) accountMatchString=$OPTARG
            gotAccountMatchString=true;;
