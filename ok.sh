@@ -1,5 +1,5 @@
 function __okclient_show_help {
-    printf "Usage: . ok.sh; OK [ options ] [ folio api path [query string] ]\n\n"
+    printf "Usage: . ok.sh; OK [ options ] [ folio api path ]\n\n"
     printf "Options: \n"
     printf "  -A <account match string>:    find FOLIO account from register (folio-services.json) by match string,\n"
     printf "                                '-A ?' shows list of all registered accounts\n"
@@ -7,14 +7,14 @@ function __okclient_show_help {
     printf "  -t <tenant>:                  login to service by this tenant     (requires either -A or both of -u and -h)\n"
     printf "  -h <host> :                   login to service at this host       (requires either -A or both of -u and -t)\n"
     printf "  -p <password>                 password for the provided account   (if omitted, the client will prompt)\n"
-    printf "  -S <user defined session tag> supports multiple sessions for different services, for example '-S LOCAL' and '-S SNAPSHOT'"
-    printf "                                The tag chosen at login must be provided in subsequent queries"
+    printf "  -S <user defined session tag> supports multiple sessions for different services, for example '-S LOCAL' and '-S SNAPSHOT'\n"
+    printf "                                The tag chosen at login must be provided in subsequent queries\n"
     printf "  -x                            'exit' (remove access token etc from environment)\n"
     printf "  -E <endpoint match string>:   select a FOLIO endpoint by match string, '-E ?' shows them all \n"
     printf "  -e <api path extension>       further path elements to add to the endpoint, for example a record identifying UUID\n"
     printf "  -q <query string>:            a CQL query string, i.e. 'title=\"magazine - q*\"' which will be url encoded as\n"
     printf "                                query=title%%3D%%22magazine+-+q%%2A%%22\n"
-    printf "  -X <method>:                  defaults to curl's default"
+    printf "  -X <method>:                  defaults to curl's default\n"
     printf "  -n:                           no limit; remove the APIs default limit (if any) on the number of records in the response\n"
     printf "  -d <inline body>:             request body on command line\n"
     printf "  -f <file name>:               file containing request body\n"
@@ -31,15 +31,21 @@ function __okclient_show_help {
     printf "  Get instances:                                    OK instance-storage/instances\n"
     printf "  Get instances array:                              OK instance-storage/instances -j '.instances[]'\n"
     printf "  - alternatively use keyword RECORDS with -j       OK instance-storage/instances -j 'RECORDS[]'\n"
+    printf "                                                       note: \"RECORDS\" is shorthand for '.[keys[]] | (select(type==\"array\"))'\n"
+    printf "                                                             It will simply retrieve properties of type array from an object\n"
     printf "  Get instance titles with jq:                      OK instance-storage/instances -j '.instances[].title'\n"
     printf "  Select from list of APIs with 'loan' in the path: OK -E loan\n"
     printf "  Create new loan type:                             OK -m post -d '{\"name\": \"my loan type\"}' loan-types\n"
     printf "  Get the names of up to 10 loan types:             OK loan-types -j '.loantypes[].name'\n"
     printf "  Get the names of all loan types with -n:          OK loan-types -n -j '.loantypes[].name'\n"
     printf "  - alternatively use keyword RECORDS with -j       OK loan-types -n -j 'RECORDS[] | .name'\n"
-    printf "  Find instances with titles like \"magazine - q\":   OK instance-storage/instances -q \"title=\"magazine - q*\" \n"
-    printf "  Tip: find the name of a collection property:      OK material-types -j 'keys[]'\n"
-    printf "  Tip: get property names of a record from an API:  OK item-storage/items -j 'RECORDS[0] | keys[]'\n"
+    printf "  Find instances with titles like \"magazine - q\":   OK instance-storage/instances -q 'title=\"magazine - q*\"' \n"
+    printf "  - alternatively add query to api path but encode: OK instance-storage/instances?query=title%%3D%%22magazine%%20-%%20q%%2A%%22%%0A\n"
+    printf "  - alternatively specify query as path extension:  OK -E instances -e ?query=title%%3D%%22magazine%%20-%%20q%%2A%%22%%0A\n"
+    printf "  Tip: find the name of a collection property:      OK material-types -j 'keys[]'  (displays names of all top level properties of the response\n"
+    printf "  - alternatively use keyword PROPS with -j         OK material-types -j 'PROPS' (displays name and type of top level properties)\n"
+    printf "                                                       note: \"PROPS\" is shorthand for 'keys[] as \$k | \"\\(\$k), \\(.[\$k] | type)\"'\n"
+    printf "  Tip: get property names and types of a record:    OK instance-storage/instances -j 'RECORDS[0] | PROPS'\n"
     printf "  If not logged in: select account, GET APIs from lists: OK\n"
 }
 
@@ -407,6 +413,7 @@ function OK {
         e) endpointExtension=$OPTARG;;
         f) file=$OPTARG;;
         j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) }
+           jqCommand=${jqCommand/PROPS/keys[] as \$k | \"\\(\$k), \\(.[\$k] | type)\"}
            s="-s";;
         A) accountMatchString=$OPTARG
            gotAccountMatchString=true;;
