@@ -36,7 +36,7 @@ function __okclient_show_help {
     printf "  Get instances array with -j (runs jq -r on response): OK instance-storage/instances -j '.instances[]'\n"
     printf "  Get instance titles with -j:                          OK instance-storage/instances -j '.instances[].title'\n"
     printf "  Select from list of APIs with 'loan' in the path:     OK -E loan\n"
-    printf "  Create new loan type:                                 OK -m post -d '{\"name\": \"my loan type\"}' loan-types\n"
+    printf "  Create new loan type:                                 OK -X post -d '{\"name\": \"my loan type\"}' loan-types\n"
     printf "  Get the names of up to 10 loan types:                 OK loan-types -j '.loantypes[].name'\n"
     printf "  Get the names of all loan types with -n:              OK loan-types -n -j '.loantypes[].name'\n"
     printf "  Find instances with titles like \"magazine - q\":       OK instance-storage/instances -q 'title=\"magazine - q*\"' \n"
