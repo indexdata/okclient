@@ -1,5 +1,5 @@
 function __okclient_show_help {
-    printf "OKAPI cient for use in bash scripts or interactively. \n"
+    printf "OKAPI client for use in bash scripts or interactively. \n"
     printf "Uses cURL and jq for retrieving and manipulating data through FOLIO APIs.\n\n"
     printf "Usage: OK [ options ] [ folio api path ]\n\n"
     printf "Options: \n"
