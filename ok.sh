@@ -121,6 +121,7 @@ function __okclient_define_session_env_vars {
   sessionFOLIOHOST="$session"FOLIOHOST
   sessionFOLIOTENANT="$session"FOLIOTENANT
   sessionFOLIOUSER="$session"FOLIOUSER
+  sessionPASSWORD="$session"PASSWORD
   sessionTOKEN="$session"TOKEN
   sessionExpiration="$session"expiration
 }
