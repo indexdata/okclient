@@ -30,7 +30,7 @@
       "host": "https://cu-test-okapi.folio.indexdata.com",
       "accounts": [
         {
-          "tag": "id_admin:id_admin@cu-test",
+          "tag": "id_admin:cu@cu-test",
           "tenant": "cu",
           "username": "id_admin",
           "p": "g86Xj5aZ9JZ4sS3n"
@@ -137,6 +137,17 @@
       "accounts": [
         {
           "tag": "folio:fs09000000@okapi-bugfest-orchid",
+          "tenant": "fs09000000",
+          "username": "folio",
+          "p": "folio"
+        }
+      ]
+    },
+    {
+      "host": "https://okapi-bugfest-quesnelia.int.aws.folio.org",
+      "accounts": [
+        {
+          "tag": "folio:fs09000000@okapi-bugfest-quesnelia",
           "tenant": "fs09000000",
           "username": "folio",
           "p": "folio"
