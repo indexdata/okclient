@@ -15,7 +15,8 @@ Yet another curl based FOLIO client - for inclusion as submodule in select custo
 
     OK
 
-Here we don't tell the client what FOLIO service or FOLIO API we want to access with just `OK`, so it will ask if we want
+Here we don't tell the client what FOLIO service or FOLIO API we want to access with just `OK`, so it will ask if we
+want
 to continue from existing lists of suggested FOLIO installations and APIs. It will get them
 from [folio-services.json](./folio-services.json), that has somewhat arbitrarily compiled lists of FOLIO instances (i.e.
 FOLIO snapshot and bug-fests) and most used APIs (i.e. `inventory-storage/instances`). The lists are supposed to be
@@ -62,7 +63,42 @@ For example, to copy material types and identifier types from FOLIO snapshot to 
 
 * -S chooses the session for the request
 * -n means no limit on records
-* -s is simply invoking cURL -s 
+* -s is simply invoking cURL -s
 * -j is shorthand for the invocation of jq on the response: ` -s | jq -r `
+* -d is cURLs --data-binary
 * RECORDS[] is shorthand for a jq instruction to get the records array from a FOLIO API collection response without
-  knowing the name of the array 
+  knowing the name of the array
+
+### Manipulating data
+
+For manipulating data as they are being transferred or updated, jq might be a handy option, while obviously not the only
+option. Here are some examples, not to turn this into a jq tutorial, only for inspiration.
+
+#### Example
+
+Exporting holdings records from a source FOLIO to a target FOLIO, certain "virtual" properties must be pruned or the
+POST will fail:
+
+    for id in $(OK -S $SOURCE_FOLIO holdings-storage/holdings -n -j 'RECORDS[].id'); do
+      record=$(OK -S $SOURCE_FOLIO -s holdings-storage/holdings/$id" -j 'del(.holdingsItems,.bareHoldingsItems)')
+      OK -S $TARGET_FOLIO -d "$record" holdings-storage/holdings
+    done
+
+#### Example
+
+Export active users but assign all a new email to prevent test spam
+
+    for id in $(OK -S $SOURCE_FOLIO users -n -q "active=true" -j 'RECORDS[].id'); do
+      record=$(OK -S $SOURCE_FOLIO -s "users/$id" -j 'if .personal?.email != null 
+                                                      then .personal.email="name@email.com" 
+                                                      else . end')
+      OK -S $TARGET_FOLIO -d "$record" users
+    done
+
+#### Example
+
+Update a loan policy with a due date interval measured in minutes
+
+    OK -X PUT  loan-policy-storage/loan-policies/4cdff544-b410-4301-a2fc-1aa918806860 -d \
+      "$(OK loan-policy-storage/loan-policies/4cdff544-b410-4301-a2fc-1aa918806860 \
+                                      -j '.loansPolicy.period.intervalId="Minutes"')"
