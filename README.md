@@ -71,8 +71,7 @@ For example, to copy material types and identifier types from FOLIO snapshot to 
 
 ### Manipulating data
 
-For manipulating data as they are being transferred or updated, jq might be a handy option, while obviously not the only
-option. Here are some examples, not to turn this into a jq tutorial, only for inspiration.
+As for manipulating the data being pulled from or pushed to FOLIO, jq might be one of the handy options.
 
 #### Example
 
@@ -86,7 +85,7 @@ POST will fail:
 
 #### Example
 
-Export active users but assign all a new email to prevent test spam
+Export active users but assign all a new email to prevent spamming when testing features that send emails.
 
     for id in $(OK -S $SOURCE_FOLIO users -n -q "active=true" -j 'RECORDS[].id'); do
       record=$(OK -S $SOURCE_FOLIO -s "users/$id" -j 'if .personal?.email != null 
