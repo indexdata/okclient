@@ -67,35 +67,35 @@ For example, using the sessions above, to copy material types from FOLIO snapsho
 
 Explanation for the options and keywords used in this example:
 
-* -S chooses the session for the request
-* -n means no limit on records
-* -s is simply invoking cURL -s
-* -j invokes jq on the response
-* -d is cURLs --data-binary
+* `-S` chooses the session for the request
+* `-n` means no limit on records
+* `-s` simply invokes cURLs `-s`
+* `-j` invokes `jq` on the response (see next section regarding `jq` integration)
+* `-d` is cURLs `--data-binary`
 
 ### Light integration of jq
 
 OK applies a lightweight integration of the JSON query tool `jq` with the option `-j` as shown in the previous example. OK will put `-s` on the curl
 request to silence other
-output than the response, pipe the response to jq, and then apply jq with the -r option.
+output than the response, pipe the response to jq, and then apply `jq` with the -r option.
 
     OK instance-storage/instances -j '.instances[].title'
 
-One could just pipe the output of OK to jq instead as
+One could just pipe the output of OK to `jq` instead as
 in `OK instance-storage/instances -s | jq -r '.instances[].title'`, but output from OK other than the response (for
-example an interactive login) would then go to jq as well.
+example an interactive login) would then go to `jq` as well, that's all.
 
-The `-j` option additional provides a couple of shorthands for some jq query instructions.
+The `-j` option additional provides a couple of shorthands for some `jq` query instructions. 
 
-#### Keyword RECORDS, jq retrieves arrays
-`RECORDS` will be translated into an instruction to retrieve array(s) from a JSON object. This can be used to get the records array from a FOLIO API collection response generically, without necessarily knowing the name of the array, that is. 
+#### Keyword `RECORDS`: make `jq` retrieve arrays
+`RECORDS` will be translated into an instruction to retrieve array(s) from a JSON object. This can be used to get the records array from a FOLIO API collection response generically -- without necessarily knowing the name of the array, that is. 
 
     OK material-types -j 'RECORDS[].name'
 
-This request will get the material types record array ("mtypes") from the material-types response.
+This request will get the material types record array (`mtypes`) from the material-types response.
 The example is equivalent to  
 
-    OK material-types -j '.mtypes[].name'
+    OK material-types -j '.mtypes[].name'  # or
     OK material-types -j '.[keys[]] | (select(type=="array"))[].name'
 
 With `RECORDS` it is thus possible to iterate over APIs and generically get their record arrays:
@@ -107,7 +107,7 @@ With `RECORDS` it is thus possible to iterate over APIs and generically get thei
       done
     done
 
-#### Keyword PROPS, jq retrieves names and types of properties 
+#### Keyword `PROPS`: make `jq` retrieve names and types of properties 
 `PROPS` will be translated into an instruction to retrieve top level property names and type from a JSON object, for example:
 
     OK instance-storage/instances -j 'RECORDS[0] | PROPS'`
@@ -116,12 +116,11 @@ This request will display the names and types of properties in the first instanc
 
     OK instance-storage/instances -j '.instances[0] | keys[] as $k | "\($k), \(.[$k] | type)"'
 
-
 ### Manipulating data
 
-As for manipulating the data being pulled from or pushed to FOLIO, jq might be one of the handy options.
+As for manipulating the data being pulled from or pushed to FOLIO, `jq` could be one of possibly many handy options. This is better described in various online `jq` tutorials, but here are some examples
 
-#### Example
+#### Example 1, removing disallowed properties
 
 Exporting holdings records from a source FOLIO to a target FOLIO, certain "virtual" properties must be pruned or the
 POST will fail:
@@ -131,7 +130,7 @@ POST will fail:
       OK -S $TARGET_FOLIO -d "$record" holdings-storage/holdings
     done
 
-#### Example
+#### Example 2, bulk changing user email addresses 
 
 Export active users but assign all a new email to prevent spamming when testing features that send emails.
 
@@ -142,7 +141,7 @@ Export active users but assign all a new email to prevent spamming when testing 
       OK -S $TARGET_FOLIO -d "$record" users
     done
 
-#### Example
+#### Example 3, changing a loan policy's due date interval
 
 Update a loan policy with a due date interval measured in minutes
 
