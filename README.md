@@ -60,7 +60,7 @@ This can for example be used for comparing or transferring records from one FOLI
 
 For example, using the sessions above, to copy material types from FOLIO snapshot to FOLIO localhost
 
-    for id in $(OK -S SNAPSHOT material-types -n -j 'mtypes[].id'); do  # from snapshot
+    for id in $(OK -S SNAPSHOT material-types -n -j '.mtypes[].id'); do  # from snapshot
         record=$(OK -S SNAPSHOT material-types/"$id" -s)                # from shapshot
         OK -S LOCAL -s -X post -d "$record" material-types              # to local host
     done
@@ -110,7 +110,7 @@ With `RECORDS` it is thus possible to iterate over APIs and generically get thei
 #### Keyword `PROPS`: make `jq` retrieve names and types of properties 
 `PROPS` will be translated into an instruction to retrieve top level property names and type from a JSON object, for example:
 
-    OK instance-storage/instances -j 'RECORDS[0] | PROPS'`
+    OK instance-storage/instances -j 'RECORDS[0] | PROPS'
 
 This request will display the names and types of properties in the first instance record of the collection. The example is equivalent to 
 
@@ -125,20 +125,20 @@ As for manipulating the data being pulled from or pushed to FOLIO, `jq` could be
 Exporting holdings records from a source FOLIO to a target FOLIO, certain "virtual" properties must be pruned or the
 POST will fail:
 
-    for id in $(OK -S $SOURCE_FOLIO holdings-storage/holdings -n -j 'RECORDS[].id'); do
-      record=$(OK -S $SOURCE_FOLIO -s holdings-storage/holdings/$id" -j 'del(.holdingsItems,.bareHoldingsItems)')
-      OK -S $TARGET_FOLIO -d "$record" holdings-storage/holdings
+    for id in $(OK -S SNAPSHOT holdings-storage/holdings -n -j 'RECORDS[].id'); do
+      record=$(OK -S SNAPSHOT -s holdings-storage/holdings/"$id" -j 'del(.holdingsItems,.bareHoldingsItems)')
+      OK -S LOCAL -d "$record" holdings-storage/holdings
     done
 
 #### Example 2, bulk changing user email addresses 
 
 Export active users but assign all a new email to prevent spamming when testing features that send emails.
 
-    for id in $(OK -S $SOURCE_FOLIO users -n -q "active=true" -j 'RECORDS[].id'); do
-      record=$(OK -S $SOURCE_FOLIO -s "users/$id" -j 'if .personal?.email != null 
+    for id in $(OK -S SNAPSHOT users -n -q "active=true" -j 'RECORDS[].id'); do
+      record=$(OK -S SNAPSHOT -s "users/$id" -j 'if .personal?.email != null 
                                                       then .personal.email="name@email.com" 
                                                       else . end')
-      OK -S $TARGET_FOLIO -d "$record" users
+      OK -S LOCAL -d "$record" users
     done
 
 #### Example 3, changing a loan policy's due date interval
