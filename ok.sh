@@ -1,47 +1,51 @@
 function __okclient_show_help {
-    printf "OKAPI client for use in bash scripts or interactively. \n"
-    printf "Uses cURL and jq for retrieving and manipulating data through FOLIO APIs.\n\n"
-    printf "Usage: OK [ options ] [ folio api path ]\n\n"
+    printf "okclient: OKAPI client for making curl requests to FOLIO in bash scripts or interactively.\n\n"
+    printf "Usage: OK [ api ] [ options ] \n\n"
+    printf "OK takes a single API argument plus a number of options. The API argument can be a complete FOLIO path,\n"
+    printf "perhaps including a query string, or it can be a partial path that starts or ends with a question mark.\n"
+    printf "okclient will search in its own list of APIs for matching paths if a partial path is specified.\n\n"
+    printf "  OK instance-storage/instances  okclient will take this as the complete path to use\n"
+    printf "  OK inventory/instances?limit=2 okclient will make the request with this path and query string.\n"
+    printf "  OK instances?                  okclient will display a list of APIs with 'instances' in the path\n\n"
     printf "Options: \n"
-    printf "  -A <account match string>:    find FOLIO account from register (folio-services.json) by match string,\n"
-    printf "                                '-A ?' shows list of all registered accounts\n"
-    printf "  -u <username>:                login to service with this username (requires either -A or both of -t and -h)\n"
-    printf "  -t <tenant>:                  login to service by this tenant     (requires either -A or both of -u and -h)\n"
-    printf "  -h <host> :                   login to service at this host       (requires either -A or both of -u and -t)\n"
+    printf "  -a <account match string>:    find FOLIO accounts from okclient's own register that contains the given string.\n"
+    printf "                                '-a ?' shows a list of all registered accounts. More can be added to folio-services.json\n"
+    printf "  -u <username>:                login to a service with this username (requires either -a or both of -t and -h)\n"
+    printf "  -t <tenant>:                  login to a service by this tenant     (requires either -a or both of -u and -h)\n"
+    printf "  -h <host> :                   login to a service at this host       (requires either -a or both of -u and -t)\n"
     printf "  -p <password>                 password for the provided account   (if omitted, the client will prompt)\n"
     printf "  -S <user defined session tag> supports multiple sessions for different services, for example '-S LOCAL' and '-S SNAPSHOT'\n"
     printf "                                The tag chosen at login must be provided in subsequent queries\n"
-    printf "  -x                            'exit' (remove access token etc from environment)\n"
-    printf "  -E <endpoint match string>:   select a FOLIO endpoint by match string, '-E ?' shows them all \n"
+    printf "  -x                            'exit' - unset access token etc from environment\n"
     printf "  -e <api path extension>       further path elements to add to the endpoint, for example a record identifying UUID\n"
     printf "  -q <query string>:            a CQL query string, i.e. 'title=\"magazine - q*\"' which will be url encoded as\n"
     printf "                                query=title%%3D%%22magazine+-+q%%2A%%22\n"
     printf "  -X <method>:                  defaults to curl's default\n"
-    printf "  -n:                           no limit; remove the APIs default limit (if any) on the number of records in the response\n"
+    printf "  -n:                           means 'no limit'; remove the APIs default limit on records returned\n"
     printf "  -d <inline body>:             request body on command line\n"
     printf "  -f <file name>:               file containing request body\n"
     printf "  -c <content type>:            defaults to application/json\n"
-    printf "  -s                            curl option '-s'"
-    printf "  -o <additional curl options>  add curl options like -s, -v, -o, etc\n"
+    printf "  -s                            curl option '-s'\n"
+    printf "  -o <additional curl options>  add curl options like -v, -o, etc\n"
     printf "  -j <jq script>:               a jq command to apply to the Okapi response, ignored with -f or -d\n"
     printf "  -v                            shows current context and logs the curl request \n"
-    printf "                                 (does not invoke curl -v, use -o \"-v\" for that).\n"
+    printf "                                 (does not invoke curl -v, use -o \"-v\" for that)\n"
     printf "  -?                            show this message\n"
     printf "\n  EXAMPLES:\n"
     printf "  If not yet logged in, select account, API from lists: OK\n"
     printf "  If already logged in, select API from list:           OK\n"
-    printf "  Log in and GET instances:                             OK -A diku@localhost -p admin instance-storage/instances\n"
-    printf "  Log in, provide password interactively:               OK -A diku@localhost\n"
+    printf "  Log in and GET instances:                             OK -a diku@localhost -p admin instance-storage/instances\n"
+    printf "  Log in, provide password interactively:               OK -a diku@localhost\n"
     printf "  Get instances:                                        OK instance-storage/instances\n"
     printf "  Get instances array with -j (runs jq -r on response): OK instance-storage/instances -j '.instances[]'\n"
     printf "  Get instance titles with -j:                          OK instance-storage/instances -j '.instances[].title'\n"
-    printf "  Select from list of APIs with 'loan' in the path:     OK -E loan\n"
+    printf "  Select from list of APIs with 'loan' in the path:     OK loan?\n"
     printf "  Create new loan type:                                 OK -X post -d '{\"name\": \"my loan type\"}' loan-types\n"
     printf "  Get the names of up to 10 loan types:                 OK loan-types -j '.loantypes[].name'\n"
     printf "  Get the names of all loan types with -n:              OK loan-types -n -j '.loantypes[].name'\n"
     printf "  Find instances with titles like \"magazine - q\":       OK instance-storage/instances -q 'title=\"magazine - q*\"' \n"
     printf "  - alternatively add query to api path but encode:     OK instance-storage/instances?query=title%%3D%%22magazine%%20-%%20q%%2A%%22%%0A\n"
-    printf "  - alternatively specify query as path extension:      OK -E instances -e ?query=title%%3D%%22magazine%%20-%%20q%%2A%%22%%0A\n"
+    printf "  - alternatively specify query as path extension:      OK instances? -e ?query=title%%3D%%22magazine%%20-%%20q%%2A%%22%%0A\n"
     printf "\n  SHORTHANDS FOR USE IN THE jq INSTRUCTION: \"RECORDS\", \"PROPS\"\n"
     printf "  OK material-types -j 'RECORDS[].name'\n"
     printf "                                        Gets the records array from an API response generically.\n"
@@ -196,7 +200,7 @@ function __okclient_get_set_auth_env_values {
   else
     if [[ -n "$p_foliouser" ]]; then
       if [[ -z "$p_foliotenant" ]] || [[ -z "$p_foliohost" ]]; then
-        printf "Login initiated by -u but cannot determine FOLIO account to use without also either -A or both of -t and -h\n"
+        printf "Login initiated by -u but cannot determine FOLIO account to use without also either -a or both of -t and -h\n"
         return 2
       else
         __okclient_clear_auth_cache
@@ -204,13 +208,13 @@ function __okclient_get_set_auth_env_values {
     fi
     if [[ -n "$p_foliotenant" ]]; then
       if [[ -z "$p_foliouser" ]] || [[ -z "$p_foliohost" ]]; then
-        printf "Login initiated by -t but cannot determine FOLIO account to use without also either -A or both of -u and -h\n"
+        printf "Login initiated by -t but cannot determine FOLIO account to use without also either -a or both of -u and -h\n"
         return 2
       fi
     fi
     if [[ -n "$p_foliohost" ]]; then
       if [[ -z "$p_foliotenant" ]] || [[ -z "$p_foliouser" ]]; then
-        printf "Login initiated by -h but cannot determine FOLIO account to use without also either -A or both of -u and -t\n"
+        printf "Login initiated by -h but cannot determine FOLIO account to use without also either -a or both of -u and -t\n"
         return 2
       fi
     fi
@@ -407,19 +411,21 @@ function OK {
   script_args=()
   while [ $OPTIND -le "$#" ]
   do
-    if getopts "A:S:u:t:p:h:E:e:d:X:q:f:c:j:o:snvx?" option
+    if getopts "A:a:S:u:t:p:h:E:e:d:X:q:f:c:j:o:snvx?" option
     then
       case $option
       in
         c) contentType=$OPTARG;;
         d) data=$OPTARG;;
-        E) endpointMatchString=$OPTARG;;
+        E) endpointMatchString=$OPTARG;;    # deprecated, use question mark on the api argument instead
         e) endpointExtension=$OPTARG;;
         f) file=$OPTARG;;
         j) jqCommand=${OPTARG/RECORDS/.[keys[]] | (select(type==\"array\")) }
            jqCommand=${jqCommand/PROPS/keys[] as \$k | \"\\(\$k), \\(.[\$k] | type)\"}
            s="-s";;
         A) accountMatchString=$OPTARG
+           gotAccountMatchString=true;;     # deprecated, lower case a instead
+        a) accountMatchString=$OPTARG
            gotAccountMatchString=true;;
         S) session=${OPTARG:+$OPTARG"_"};;
         X) method="-X${OPTARG^^}";;
@@ -444,7 +450,9 @@ function OK {
     fi
   done
 
-  p_endpoint="${script_args[0]}"
+  # API arguments
+  api="${script_args[0]}"
+  { [[ "$api" == *\? ]] || [[ "$api" == \?* ]]; } && endpointMatchString=${api//\?} || p_endpoint=$api
   contentType=${contentType:-"application/json"}
 
   __okclient_define_session_env_vars
