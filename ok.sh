@@ -91,7 +91,7 @@ function __okclient_get_token {
   local respHeaders
   local statusHeader
   [[ -z "$s" ]] && printf "Logging in to %s %s\n\n" "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
-  respHeadersFile="h-$(uuidgen).txt"
+  [[ -d "/tmp" ]] && respHeadersFile="/tmp/h-$(uuidgen).txt" || respHeadersFile="h-$(uuidgen).txt"
   authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: ${!sessionFOLIOTENANT}"  -d "{ \"username\": \"${!sessionFOLIOUSER}\", \"password\": \"${!sessionPASSWORD}\"}" "${!sessionFOLIOHOST}/authn/login-with-expiry")
   respHeaders=$(<"$respHeadersFile")
   rm "$respHeadersFile"
@@ -387,6 +387,8 @@ while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 folioServicesJson="$DIR"/folio-services.json
+
+source "$DIR"/okutils.sh
 
 function OK {
   [[ "$1" == "-?" ]] &&  __okclient_show_help
