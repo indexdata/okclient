@@ -17,12 +17,12 @@ function OKJoin() {
 function OKSliceAndSplice() {
   local allTokens="$1"
   local splicingFunction=$2
-  local json=$3
+  local splicedJson=$3
   lineCount=$(echo -n "$allTokens" | grep -c '^')
   for (( fromLine=1, pageSize=100; fromLine<=lineCount; fromLine=fromLine+pageSize )); do
     sliceOfTokens="$(echo "$allTokens" | sed -n "$(( fromLine )),$(( fromLine+pageSize-1 ))p;$(( fromLine+pageSize ))q")"
-    json="$($splicingFunction "$sliceOfTokens" "$json")";
+    splicedJson="$($splicingFunction "$sliceOfTokens" "$splicedJson")";
   done
-  printf "%s" "$json"
+  printf "%s" "$splicedJson"
 }
 
