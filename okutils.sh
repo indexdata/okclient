@@ -1,7 +1,7 @@
 
-function OKJoin() {
+function ok_join() {
   local api=$1; local condition=$2; local identifiers=$3;
-  if arrayName="$(_get_name_of_array "$api")" ; then
+  if arrayName="$(ok_get_name_of_array "$api")" ; then
     splicedJson="{ \"$arrayName\": [] }"
     lineCount=$(echo -n "$identifiers" | grep -c '^')
     for (( fromLine=1, pageSize=100; fromLine<=lineCount; fromLine=fromLine+pageSize )); do
@@ -17,7 +17,7 @@ function OKJoin() {
   fi
 }
 
-function OKSliceAndSplice() {
+function ok_slice_and_splice() {
   local allTokens="$1"
   local splicingFunction=$2
   local splicedJson=$3
@@ -29,11 +29,10 @@ function OKSliceAndSplice() {
   printf "%s" "$splicedJson"
 }
 
-function _get_name_of_array () {
+function ok_get_name_of_array () {
   api=$1
   arrayName="$(OK "$api" -j "keys[] as \$k | select(\"\\(.[\$k] | type)\"==\"array\") | \"\\(\$k)\" ")"
   [[ ! "$(echo -n "$arrayName" | grep -c '^')" -eq 1 ]] && printf "'%s' not an API collection request? \nExpected a single array, found: <%s>\n" "$api" "$arrayName" && return 1
   echo "$arrayName"
   return 0
 }
-

@@ -368,7 +368,7 @@ function __okclient_compose_run_curl_request {
     fi
 }
 
-function gotFolioSession {
+function ok_got_folio_session {
   session=${1:+$1"_"}
   __okclient_define_session_env_vars
   if [[ -n "${!sessionTOKEN}" ]] && [[ -n "${!sessionFOLIOTENANT}" ]] && [[ -n "${!sessionFOLIOUSER}" ]] &&  [[ -n "${!sessionFOLIOHOST}" ]] ; then
