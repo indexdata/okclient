@@ -7,7 +7,7 @@ function OKJoin() {
   for (( fromLine=1, pageSize=100; fromLine<=lineCount; fromLine=fromLine+pageSize )); do
     page="$(echo "$identifiers" | sed -n "$(( fromLine )),$(( fromLine+pageSize-1 ))p;$(( fromLine+pageSize ))q")"
     identifierQuery="$condition(${page//$'\n'/ OR })"
-    records="$(OK instance-storage/instances -n -q "$identifierQuery" -j 'RECORDS[]')"
+    records="$(OK "$api" -n -q "$identifierQuery" -j 'RECORDS[]')"
     splicedJson="$(printf "%s" "$splicedJson" "$records" | jq ".$arrayName += [inputs]")"
   done
   splicedJson="$(printf "%s" "$splicedJson" | jq ".$arrayName |= unique_by(.id) | .totalRecords=(.$arrayName|length)")"
