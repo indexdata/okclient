@@ -111,10 +111,9 @@ function __okclient_get_token {
     # Extract token from response header
     declare -g -x "$session"TOKEN="$(echo "$respHeaders" | sed -n 's/.*folioAccessToken=\([^;]*\).*/\1/p')"
     sessionTOKEN="$session"TOKEN
-    ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\n" "$respHeaders"
     declare -g -x "$session"expiration="$(echo "$authResponse" | jq -r '.accessTokenExpiration')"
     sessionExpiration="$session"expiration
-    ( $viewContext ) && echo "Expiration: ${!sessionExpiration}"
+    ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\nExpiration: %s\n" "$respHeaders" "${!sessionExpiration}"
   fi
   return 0
 }

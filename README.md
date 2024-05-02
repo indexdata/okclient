@@ -130,7 +130,9 @@ POST will fail:
       OK -S LOCAL -d "$record" holdings-storage/holdings
     done
 
-#### Example 2, bulk changing user email addresses 
+The example above GETs the records one object at a time; see example 4 for the more efficient way to export/import 
+
+#### Example 2, bulk changing user email addresses
 
 Export active users but assign all a new email to prevent spamming when testing features that send emails.
 
@@ -148,3 +150,19 @@ Update a loan policy with a due date interval measured in minutes
     OK -X PUT  loan-policy-storage/loan-policies/4cdff544-b410-4301-a2fc-1aa918806860 -d \
       "$(OK loan-policy-storage/loan-policies/4cdff544-b410-4301-a2fc-1aa918806860 \
                                       -j '.loansPolicy.period.intervalId="Minutes"')"
+
+
+#### Example 4, exporting Inventory reference data from one FOLIO installation to another
+
+    for api in location-units/institutions location-units/campuses location-units/libraries locations \
+      instance-note-types alternative-title-types loan-types material-types contributor-types instance-statuses \
+      identifier-types holdings-types holdings-sources instance-types modes-of-issuance instance-formats nature-of-content-terms \
+      contributor-name-types electronic-access-relationships instance-relationship-types ill-policies; do
+        
+      while read -r jsonLine; do
+        OK -S LOCAL -d "${jsonLine}" $api -s
+      done <<< "$(OK -S SNAPSHOT $api -n -s | jq -c '.[keys[0]][]')"
+    
+    done
+
+This works fine for smaller and medium sized record sets but may not be optimal if exporting record sets containing millions of records. 
