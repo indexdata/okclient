@@ -471,7 +471,13 @@ function OK {
     if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "${!sessionTOKEN}" ]]; then
       __okclient_select_account_and_log_in
     fi
-    [[ -n "${!sessionTOKEN}" ]] &&  __okclient_select_endpoint
-    [[ -n "$endpoint" ]] && __okclient_compose_run_curl_request
+    if [[ -n "${!sessionTOKEN}" ]]; then
+      __okclient_select_endpoint
+    else
+      return 1
+    fi
+    if [[ -n "$endpoint" ]]; then
+      __okclient_compose_run_curl_request
+    fi
   fi
 }
