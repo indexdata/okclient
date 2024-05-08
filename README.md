@@ -165,4 +165,4 @@ Update a loan policy with a due date interval measured in minutes
     
     done
 
-This works fine for smaller and medium sized record sets but may not be optimal if exporting record sets containing millions of records. 
+This works fine for smaller and medium-sized record sets but may not be optimal if exporting record sets containing hundreds of thousands of records. APIs might indeed not support downloading that many records per request. 
