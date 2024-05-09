@@ -323,7 +323,7 @@ function __okclient_select_endpoint {
 # Check token expiration and issue new login if expired
 function __okclient_maybe_refresh_token {
   if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "${!sessionExpiration}" ]]; then
-    ($viewContext) && echo "Token expired ${!sessionExpiration}. Renewing login before request."
+    ($viewContext) && echo "Token expired ${!sessionExpiration}. It's $(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n') now. Renewing login before request."
     __okclient_get_token
   fi
 }
