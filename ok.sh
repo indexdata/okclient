@@ -25,7 +25,7 @@ function __okclient_show_help {
     printf "  -d <inline body>:             request body on command line\n"
     printf "  -f <file name>:               file containing request body\n"
     printf "  -c <content type>:            defaults to application/json\n"
-    printf "  -s                            curl option '-s'\n"
+    printf "  -s                            silences OK logging (curl requests are always done with -s)\n"
     printf "  -o <additional curl options>  add curl options like -v, -o, etc\n"
     printf "  -j <jq script>:               a jq command to apply to the Okapi response, ignored with -f or -d\n"
     printf "  -v                            shows current context and logs the curl request \n"
@@ -127,6 +127,7 @@ function __okclient_define_session_env_vars {
   sessionPASSWORD="$session"PASSWORD
   sessionTOKEN="$session"TOKEN
   sessionExpiration="$session"expiration
+  sessionHTTPStatus="$session"HTTPStatus
 }
 
 function __okclient_show_session_variables {
@@ -135,7 +136,8 @@ function __okclient_show_session_variables {
   printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
   printf "User (%s):     %s\n" "$sessionFOLIOUSER" "${!sessionFOLIOUSER}"
   printf "Token (%s):        %s\n" "$sessionTOKEN" "${!sessionTOKEN}"
-  printf "Token expires: %s\n" "${!sessionExpiration}"
+  printf "Token expires:        %s\n     It's now:        %s\n" "${!sessionExpiration}" "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')"
+  printf "\nLatest %s: %s\n" "$sessionHTTPStatus" "${!sessionHTTPStatus}"
   printf "\n"
 }
 
@@ -148,6 +150,7 @@ function __okclient_clear_auth_cache {
   declare -g -x "$session"PASSWORD=""
   declare -g -x "$session"expiration=""
   declare -g -x "$session"accountTag=""
+  declare -g -x "$session"HTTPStatus=""
 }
 
 # Fetch accounts list from json register, optionally filtered by match string
@@ -341,30 +344,67 @@ function __okclient_compose_run_curl_request {
         url="$url""?limit=1000000"
       fi
     fi
-    # Define headers, after potential RTR refresh
+    # Define headers following potential RTR refresh
     __okclient_maybe_refresh_token
-    local tokenHeader="x-okapi-token: ${!sessionTOKEN}"
-    local tenantHeader="x-okapi-tenant: ${!sessionFOLIOTENANT}"
-    local contentTypeHeader="Content-type: $contentType"
+    local tokenHeader="X-okapi-token:${!sessionTOKEN}"
+    local tenantHeader="X-okapi-tenant:${!sessionFOLIOTENANT}"
+    local contentTypeHeader="Content-type:$contentType"
 
-    # Execute
-    # shellcheck disable=SC2086  # curl will issue error on empty additionalCurlOptions argument, so var cannot be quoted
-    if [[ -z "$file" ]] && [[ -z "$data" ]]; then
-      ( $viewContext ) && echo curl $s "$method" ${query:+"--get --data-urlencode "$query}  -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" "$url" "$additionalCurlOptions"
-      ( $viewContext ) && [[ -n "$jqCommand" ]] && echo "jq -r $jqCommand"
-      if [[ -n "$query" ]]; then
-        [ -n "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions | jq -r "$jqCommand"
-        [ -z "$jqCommand" ] && curl $s -w "\n" --get --data-urlencode "$query" -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+    curlRequest="curl -w \n%{response_code} -s -H$tenantHeader -H$tokenHeader -H$contentTypeHeader $method"
+    if [[ -n "$additionalCurlOptions" ]]; then
+      curlRequest="$curlRequest $additionalCurlOptions"
+    fi
+    curlRequest="$curlRequest $url"
+    if [[ -n "$query" ]]; then
+      curlRequest="$curlRequest --get --data-urlencode"
+    elif [[ -n "$file" || -n "$data" ]]; then
+      curlRequest="$curlRequest --data-binary"
+    fi
+    # Verbose logging
+    if ( $viewContext ); then
+      if [[ -n "$file" ]]; then
+        request="$curlRequest @${file}"
+      elif [[ -n "$data" ]]; then
+        request="$curlRequest $data"
+      elif [[ -n "$query" ]]; then
+        request="$curlRequest $query"
       else
-        [ -n "$jqCommand" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions | jq -r "$jqCommand"
-        [ -z "$jqCommand" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" "$url" $additionalCurlOptions
+        request="$curlRequest"
+      fi
+      printf "curl request: %s\n" "$request"
+      if [[ -n "$jqCommand" ]]; then
+        printf "\njq command:\n   jq -r %s\n" "$jqCommand"
+      fi
+    fi
+    # Execute curl request
+    if [[ -n "$file" ]]; then
+      response=$($curlRequest  @"${file}")
+    elif [[ -n "$data" ]]; then
+      response=$($curlRequest "${data}")
+    elif [[ -n "$query" ]]; then
+      response=$($curlRequest "${query}")
+    else
+      response=$($curlRequest)
+    fi
+    # Grab HTTP status code to env var from last line of response
+    declare -g -x "$session"HTTPStatus="$(tail -n 1 <<< "$response")"
+    sessionHTTPStatus="$session"HTTPStatus
+    # Remove last line of response, the status code
+    response=$(head -n -1 <<< "$response")
+
+    # Post-process with jq or print response as is
+    # shellcheck disable=SC1083
+    if [[ $response == {* &&  $response == *} ]]; then # is JSON
+      status=0
+      if [[ -n "$jqCommand" ]]; then
+        response="$(jq -r -e "$jqCommand" <<< "$response")"
+        status=$?
       fi
     else
-      ( $viewContext ) && [ -n "$file" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary @"${file}" "$url" "$additionalCurlOptions"
-      ( $viewContext ) && [ -n "$data" ] && echo curl $s "$method" -H \""$tenantHeader"\" -H \""$tokenHeader"\" -H \""$contentTypeHeader"\" --data-binary \'"${data}"\' "$url" "$additionalCurlOptions"
-      [ -n "$file" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary @"${file}" "$url" $additionalCurlOptions
-      [ -n "$data" ] && curl $s -w "\n" $method -H "$tenantHeader" -H "$tokenHeader" -H "$contentTypeHeader" --data-binary "${data}" "$url" $additionalCurlOptions
+      status=1 # return error if not JSON
     fi
+    printf "%s\n" "$response"
+    return $status;
 }
 
 function ok_got_folio_session {
@@ -375,6 +415,12 @@ function ok_got_folio_session {
   else
     return 1
   fi
+}
+
+function ok_http_status {
+  session=${1:+$1"_"}
+  sessionHTTPStatus="$session"HTTPStatus
+  echo "${!sessionHTTPStatus}"
 }
 
 # Find working dir, even if the script is symlinked, to have path to the registry json with accounts and APIs.
