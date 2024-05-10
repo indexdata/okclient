@@ -2,7 +2,7 @@
 # $1 The API to retrieve records from
 # $2 The condition to apply for the provided identifiers (i.e. "id==")
 # $3 The collection of identifiers to apply the condition to for the provided API. The identifiers will be queried for with ORs between them.
-# $4 (optional) The named session to issue the request(s) for
+# $4 (optional) The named session to issue the okr(s) for
 function ok_join() {
   local api=$1; local condition=$2; local identifiers=$3; local session="$4"
   if arrayName="$(ok_get_name_of_array "$api" "$session")" ; then
@@ -36,7 +36,7 @@ function ok_slice_and_splice() {
   printf "%s" "$splicedJson"
 }
 
-# Stitches together multiple responses from multiple request to a given API, using RMBs support for requesting batches of
+# Stitches together multiple responses from multiple requests to a given API, using RMBs support for requesting batches of
 # records in UUID order by offset-limit.
 # $1:  The API to request records from
 # $2:  The amount of records to retrieve per request
@@ -67,8 +67,19 @@ function ok_chunked_download() {
 function ok_get_name_of_array () {
   api=$1
   session=$2
-  arrayName="$(OK -S "$session" "$api" -j "keys[] as \$k | select(\"\\(.[\$k] | type)\"==\"array\") | \"\\(\$k)\" ")"
-  [[ ! "$(echo -n "$arrayName" | grep -c '^')" -eq 1 ]] && printf "'%s' not an API collection request? \nExpected a single array, found: <%s>\n" "$api" "$arrayName" && return 1
-  echo "$arrayName"
+  okr="OK ${api}?limit=0 -s"
+  jqc="keys[] as \$k | select(\"\\(.[\$k] | type)\"==\"array\") | \"\\(\$k)\" "
+  arrayName="$($okr -j "$jqc")"
+  status=$?
+  if [[ $status -eq 0 ]]; then
+    [[ ! "$(echo -n "$arrayName" | grep -c '^')" -eq 1 ]] && printf "'%s' not an API collection request? \nExpected a single array, found: <%s>\n" "$api" "$arrayName" && return 1
+    echo "$arrayName"
+  else
+    if [[ $status -eq 4 ]]; then
+      printf "jq could not parse response \"%s\"\nRequest was [%s]\n" "$($okr)" "$okr"
+    else
+      printf "Error status \"%s\"" $status
+    fi
+  fi
   return 0
 }
