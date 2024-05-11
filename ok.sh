@@ -136,8 +136,12 @@ function __okclient_show_session_variables {
   printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "${!sessionFOLIOTENANT}"
   printf "User (%s):     %s\n" "$sessionFOLIOUSER" "${!sessionFOLIOUSER}"
   printf "Token (%s):        %s\n" "$sessionTOKEN" "${!sessionTOKEN}"
-  printf "Token expires:        %s\n     It's now:        %s\n" "${!sessionExpiration}" "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')"
-  printf "\nLatest %s: %s\n" "$sessionHTTPStatus" "${!sessionHTTPStatus}"
+  if [[ -n "${!sessionExpiration}" ]]; then
+    printf "Token expires:        %s\n     It's now:        %s\n" "${!sessionExpiration}" "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')"
+  fi
+  if [[ -n "${!sessionHTTPStatus}" ]]; then
+    printf "\nLatest %s: %s\n" "$sessionHTTPStatus" "${!sessionHTTPStatus}"
+  fi
   printf "\n"
 }
 
@@ -390,15 +394,21 @@ function __okclient_compose_run_curl_request {
     declare -g -x "$session"HTTPStatus="$(tail -n 1 <<< "$response")"
     sessionHTTPStatus="$session"HTTPStatus
     # Remove last line of response, the status code
-    response=$(head -n -1 <<< "$response")
+    response=$(sed '$d' <<< "$response")
 
     # Post-process with jq or print response as is
     # shellcheck disable=SC1083
     if [[ $response == {* &&  $response == *} ]]; then # is JSON
       status=0
       if [[ -n "$jqCommand" ]]; then
-        response="$(jq -r -e "$jqCommand" <<< "$response")"
+        processedResponse="$(jq -r -e "$jqCommand" <<< "$response")"
         status=$?
+        if [[ $status -ne 0 ]]; then
+          printf "jq could not process %s with [%s]" "$response" "$jqCommand"
+          response=""
+        else
+          response="$processedResponse"
+        fi
       fi
     else
       status=1 # return error if not JSON
