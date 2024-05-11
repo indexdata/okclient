@@ -403,7 +403,7 @@ function __okclient_compose_run_curl_request {
       if [[ -n "$jqCommand" ]]; then
         processedResponse="$(jq -r -e "$jqCommand" <<< "$response")"
         status=$?
-        if [[ $status -ne 0 ]]; then
+        if [[ $status -gt 1 && $status -lt 4 ]]; then
           printf "jq could not process %s with [%s]" "$response" "$jqCommand"
           response=""
         else
