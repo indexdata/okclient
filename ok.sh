@@ -398,7 +398,7 @@ function __okclient_compose_run_curl_request {
 
     # Post-process with jq or print response as is
     # shellcheck disable=SC1083
-    if [[ $response == {* &&  $response == *} ]]; then # is JSON
+    if [[ $response == "{"*"}" ]] || [[ $response == "["*"]" ]]; then # is JSON
       status=0
       if [[ -n "$jqCommand" ]]; then
         processedResponse="$(jq -r -e "$jqCommand" <<< "$response")"
