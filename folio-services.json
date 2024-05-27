@@ -27,6 +27,16 @@
       ]
     },
     {
+      "host": "https://folio-snapshot-2-okapi.dev.folio.org",
+      "accounts": [
+        {
+          "tag": "diku_admin:diku@folio-snapshot-2",
+          "tenant": "diku",
+          "username": "diku_admin"
+        }
+      ]
+    },
+    {
       "host": "https://cu-test-okapi.folio.indexdata.com",
       "accounts": [
         {
@@ -239,6 +249,7 @@
     "harvester-admin/steps",
     "harvester-admin/tsas",
     "harvester-admin/storages",
+    "harvester-admin/previous-jobs",
     "feefines",
     "owners",
     "accounts",
