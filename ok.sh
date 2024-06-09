@@ -147,7 +147,7 @@ function __okclient_show_session_variables {
   printf "User (%s):     %s\n" "$sessionFOLIOUSER" "$(getValue "$sessionFOLIOUSER")"
   printf "Token (%s):        %s\n" "$sessionTOKEN" "$(getValue "$sessionTOKEN")"
   if [[ -n "$(getValue "$sessionEXPIRATION")" ]]; then
-    printf "Token expires:        %s\n     It's now:        %s\n" "$(getValue "$sessionEXPIRATION")" "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')"
+    printf "Token expires:        %s\n     It's now:        %s\n" "$(getValue "$sessionEXPIRATION")" "$(TZ=UTC date '+%Y-%m-%dT%H:%M:%S')"
   fi
   if [[ -n "$(getValue "$sessionHTTPStatus")" ]]; then
     printf "\nLatest %s: %s\n" "$sessionHTTPStatus" "$(getValue "$sessionHTTPStatus")"
@@ -330,8 +330,8 @@ function __okclient_select_endpoint {
 
 # Check token expiration and issue new login if expired
 function __okclient_maybe_refresh_token {
-  if [[ "$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n')" > "$(getValue "$sessionEXPIRATION")" ]]; then
-    ($viewContext) && echo "Token expired $(getValue "$sessionEXPIRATION"). It's $(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%s)T\n') now. Renewing login before request."
+  if [[ "$(TZ=UTC date '+%Y-%m-%dT%H:%M:%S')" > "$(getValue "$sessionEXPIRATION")" ]]; then
+    ($viewContext) && echo "Token expired $(getValue "$sessionEXPIRATION"). It's $(TZ=UTC date '+%Y-%m-%dT%H:%M:%S') now. Renewing login before request."
     __okclient_get_token
   fi
 }
