@@ -61,6 +61,7 @@ function setValue() {
   variableName=$1
   val=$2
   IFS= read -r -d '' "$variableName" <<< "$val"
+  return 0
 }
 
 # Retrieves value of dynamically named session variable (stripped of trailing newline)
