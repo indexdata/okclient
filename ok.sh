@@ -139,6 +139,7 @@ function __okclient_define_session_env_vars {
   sessionTOKEN="$session"TOKEN
   sessionEXPIRATION="$session"EXPIRATION
   sessionHTTPStatus="$session"HTTPStatus
+  sessionAccountTag="$session"AccountTag
 }
 
 function __okclient_show_session_variables {
@@ -166,6 +167,7 @@ function __okclient_clear_auth_cache {
   setValue "$sessionPASSWORD" ""
   setValue "$sessionEXPIRATION" ""
   setValue "$sessionHTTPStatus" ""
+  setValue "$sessionAccountTag" ""
 }
 
 # Fetch accounts list from json register, optionally filtered by match string
@@ -239,6 +241,7 @@ function __okclient_get_set_auth_env_values {
   setValue "$sessionFOLIOHOST" "${p_foliohost:-$(jq -r --arg tag "$accountTag" '.folios[]|select(.accounts[].tag == $tag) | .host' "$folioServicesJson")}"
   setValue "$sessionFOLIOTENANT" "${p_foliotenant:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .tenant' "$folioServicesJson")}"
   setValue "$sessionFOLIOUSER" "${p_foliouser:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .username' "$folioServicesJson")}"
+  setValue "$sessionPASSWORD" "$password"
   return 0
 }
 
