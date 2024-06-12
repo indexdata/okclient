@@ -57,7 +57,7 @@ function __okclient_show_help {
 }
 
 # Sets the value for a dynamically named session variable (will have trailing newline)
-function setValue() {
+function __okclient_set_value() {
   variableName=$1
   val=$2
   IFS= read -r -d '' "$variableName" <<< "$val"
@@ -65,7 +65,7 @@ function setValue() {
 }
 
 # Retrieves value of dynamically named session variable (stripped of trailing newline)
-function getValue() {
+function __okclient_get_value() {
   variableName=$1
   var=${!variableName}
   echo "${var%$'\n'}"
@@ -78,12 +78,12 @@ function __okclient_get_non_expiry_token {
   local respHeaders
   local statusHeader
   respHeadersFile="h-$(uuidgen).txt"
-  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: $(getValue "$sessionFOLIOTENANT")"  -d "{ \"username\": \"$(getValue "$sessionFOLIOUSER")\", \"password\": \"$(getValue "$sessionPASSWORD")\"}" "$(getValue "$sessionFOLIOHOST")/authn/login")
+  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: $(__okclient_get_value "$sessionFOLIOTENANT")"  -d "{ \"username\": \"$(__okclient_get_value "$sessionFOLIOUSER")\", \"password\": \"$(__okclient_get_value "$sessionPASSWORD")\"}" "$(__okclient_get_value "$sessionFOLIOHOST")/authn/login")
   respHeaders=$(<"$respHeadersFile")
   rm "$respHeadersFile"
   statusHeader=$(echo "${respHeaders}" | head -1)
   if [[ ! $statusHeader == *" 201 "* ]]; then
-      printf "\n\nAuthentication failed for user [%s] to %s@%s" "$(getValue "$sessionFOLIOUSER")" "$(getValue "$sessionFOLIOTENANT")" "$(getValue "$sessionFOLIOHOST")"
+      printf "\n\nAuthentication failed for user [%s] to %s@%s" "$(__okclient_get_value "$sessionFOLIOUSER")" "$(__okclient_get_value "$sessionFOLIOTENANT")" "$(__okclient_get_value "$sessionFOLIOHOST")"
       printf "%s\n" "$respHeaders"
       if [[ $authResponse = "{"*"}" ]]; then
         printf "Response : \"%s\"\n" "$(echo "$authResponse" | jq -r '.errors[]?.message')"
@@ -93,9 +93,9 @@ function __okclient_get_non_expiry_token {
       return || exit 1
   else
     # Extract token from response header
-    setValue "$sessionTOKEN" "$(echo "$respHeaders" | grep x-okapi-token | tr -d '\r' | cut -d " " -f2)"
+    __okclient_set_value "$sessionTOKEN" "$(echo "$respHeaders" | grep x-okapi-token | tr -d '\r' | cut -d " " -f2)"
     # shellcheck disable=SC2116
-    setValue "$sessionEXPIRATION" "$(echo "2100-01-01T00:00:00Z")"
+    __okclient_set_value "$sessionEXPIRATION" "$(echo "2100-01-01T00:00:00Z")"
   fi
 }
 
@@ -104,16 +104,17 @@ function __okclient_get_token {
   local authResponse
   local respHeaders
   local statusHeader
-  [[ -z "$s" ]] && printf "Logging in to %s %s\n\n" "$sessionFOLIOTENANT" "$(getValue "$sessionFOLIOTENANT")"
+  [[ -z "$s" ]] && printf "Logging %s in to %s %s\n\n" "$(__okclient_get_value "$sessionFOLIOUSER")" "$sessionFOLIOTENANT" "$(__okclient_get_value "$sessionFOLIOTENANT")"
   [[ -d "/tmp" ]] && respHeadersFile="/tmp/h-$(uuidgen).txt" || respHeadersFile="h-$(uuidgen).txt"
-  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: $(getValue "$sessionFOLIOTENANT")"  -d "{ \"username\": \"$(getValue "$sessionFOLIOUSER")\", \"password\": \"$(getValue "$sessionPASSWORD")\"}" $additionalCurlOptions "$(getValue "$sessionFOLIOHOST")/authn/login-with-expiry" )
+  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: $(__okclient_get_value "$sessionFOLIOTENANT")"  -d "{ \"username\": \"$(__okclient_get_value "$sessionFOLIOUSER")\", \"password\": \"$(__okclient_get_value "$sessionPASSWORD")\"}" $additionalCurlOptions "$(__okclient_get_value "$sessionFOLIOHOST")/authn/login-with-expiry" )
   respHeaders=$(<"$respHeadersFile")
   rm "$respHeadersFile"
   statusHeader=$(echo "${respHeaders}" | head -1)
-  if [[ $statusHeader == *" 404 "* ]]; then
+  if [[ $statusHeader == *" 404 "* ]] || [[ $statusHeader == *" 200 "* ]]; then
     __okclient_get_non_expiry_token
   elif [[ ! $statusHeader == *" 201 "* ]]; then
-    printf "\n\nAuthentication failed for user [%s] to %s@%s" "$(getValue "$sessionFOLIOUSER")" "$(getValue "$sessionFOLIOTENANT")" "$(getValue "$sessionFOLIOHOST")"
+    echo $statusHeader
+    printf "\n\nAuthentication failed for user [%s] to %s@%s" "$(__okclient_get_value "$sessionFOLIOUSER")" "$(__okclient_get_value "$sessionFOLIOTENANT")" "$(__okclient_get_value "$sessionFOLIOHOST")"
     printf "%s\n" "$respHeaders"
     if [[ $authResponse = "{"*"}" ]]; then
       printf "Response : \"%s\"\n" "$(echo "$authResponse" | jq -r '.errors[]?.message')"
@@ -123,9 +124,9 @@ function __okclient_get_token {
     return 1
   else
     # Extract token from response header
-    setValue "$sessionTOKEN" "$(echo "$respHeaders" | sed -n 's/.*folioAccessToken=\([^;]*\).*/\1/p')"
-    setValue "$sessionEXPIRATION" "$(echo "$authResponse" | jq -r '.accessTokenExpiration')"
-    ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\nExpiration: %s\n" "$respHeaders" "$(getValue "$sessionEXPIRATION")"
+    __okclient_set_value "$sessionTOKEN" "$(echo "$respHeaders" | sed -n 's/.*folioAccessToken=\([^;]*\).*/\1/p')"
+    __okclient_set_value "$sessionEXPIRATION" "$(echo "$authResponse" | jq -r '.accessTokenExpiration')"
+    ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\nExpiration: %s\n" "$respHeaders" "$(__okclient_get_value "$sessionEXPIRATION")"
   fi
   return 0
 }
@@ -139,35 +140,33 @@ function __okclient_define_session_env_vars {
   sessionTOKEN="$session"TOKEN
   sessionEXPIRATION="$session"EXPIRATION
   sessionHTTPStatus="$session"HTTPStatus
-  sessionAccountTag="$session"AccountTag
 }
 
 function __okclient_show_session_variables {
   __okclient_define_session_env_vars
-  printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "$(getValue "$sessionFOLIOHOST")"
-  printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "$(getValue "$sessionFOLIOTENANT")"
-  printf "User (%s):     %s\n" "$sessionFOLIOUSER" "$(getValue "$sessionFOLIOUSER")"
-  printf "Token (%s):        %s\n" "$sessionTOKEN" "$(getValue "$sessionTOKEN")"
-  if [[ -n "$(getValue "$sessionEXPIRATION")" ]]; then
-    printf "Token expires:        %s\n     It's now:        %s\n" "$(getValue "$sessionEXPIRATION")" "$(TZ=UTC date '+%Y-%m-%dT%H:%M:%S')"
+  printf "Host (%s):     %s\n" "$sessionFOLIOHOST" "$(__okclient_get_value "$sessionFOLIOHOST")"
+  printf "Tenant (%s): %s\n"  "$sessionFOLIOTENANT" "$(__okclient_get_value "$sessionFOLIOTENANT")"
+  printf "User (%s):     %s\n" "$sessionFOLIOUSER" "$(__okclient_get_value "$sessionFOLIOUSER")"
+  printf "Token (%s):        %s\n" "$sessionTOKEN" "$(__okclient_get_value "$sessionTOKEN")"
+  if [[ -n "$(__okclient_get_value "$sessionEXPIRATION")" ]]; then
+    printf "Token expires:        %s\n     It's now:        %s\n" "$(__okclient_get_value "$sessionEXPIRATION")" "$(TZ=UTC date '+%Y-%m-%dT%H:%M:%S')"
   fi
-  if [[ -n "$(getValue "$sessionHTTPStatus")" ]]; then
-    printf "\nLatest %s: %s\n" "$sessionHTTPStatus" "$(getValue "$sessionHTTPStatus")"
+  if [[ -n "$(__okclient_get_value "$sessionHTTPStatus")" ]]; then
+    printf "\nLatest %s: %s\n" "$sessionHTTPStatus" "$(__okclient_get_value "$sessionHTTPStatus")"
   fi
   printf "\n"
 }
 
 # shellcheck disable=SC2140
 function __okclient_clear_auth_cache {
-  setValue "$sessionFOLIOHOST" ""
-  setValue "$sessionFOLIOHOST" ""
-  setValue "$sessionFOLIOTENANT" ""
-  setValue "$sessionFOLIOUSER" ""
-  setValue "$sessionTOKEN" ""
-  setValue "$sessionPASSWORD" ""
-  setValue "$sessionEXPIRATION" ""
-  setValue "$sessionHTTPStatus" ""
-  setValue "$sessionAccountTag" ""
+  __okclient_set_value "$sessionFOLIOHOST" ""
+  __okclient_set_value "$sessionFOLIOHOST" ""
+  __okclient_set_value "$sessionFOLIOTENANT" ""
+  __okclient_set_value "$sessionFOLIOUSER" ""
+  __okclient_set_value "$sessionTOKEN" ""
+  __okclient_set_value "$sessionPASSWORD" ""
+  __okclient_set_value "$sessionEXPIRATION" ""
+  __okclient_set_value "$sessionHTTPStatus" ""
 }
 
 # Fetch accounts list from json register, optionally filtered by match string
@@ -238,10 +237,10 @@ function __okclient_get_set_auth_env_values {
       fi
     fi
   fi
-  setValue "$sessionFOLIOHOST" "${p_foliohost:-$(jq -r --arg tag "$accountTag" '.folios[]|select(.accounts[].tag == $tag) | .host' "$folioServicesJson")}"
-  setValue "$sessionFOLIOTENANT" "${p_foliotenant:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .tenant' "$folioServicesJson")}"
-  setValue "$sessionFOLIOUSER" "${p_foliouser:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .username' "$folioServicesJson")}"
-  setValue "$sessionPASSWORD" "$password"
+  __okclient_set_value "$sessionFOLIOHOST" "${p_foliohost:-$(jq -r --arg tag "$accountTag" '.folios[]|select(.accounts[].tag == $tag) | .host' "$folioServicesJson")}"
+  __okclient_set_value "$sessionFOLIOTENANT" "${p_foliotenant:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .tenant' "$folioServicesJson")}"
+  __okclient_set_value "$sessionFOLIOUSER" "${p_foliouser:-$(jq -r --arg tag "$accountTag" '.folios[].accounts[]|select(.tag == $tag) | .username' "$folioServicesJson")}"
+  __okclient_set_value "$sessionPASSWORD" "$password"
   return 0
 }
 
@@ -249,7 +248,7 @@ function __okclient_get_set_auth_env_values {
 function __okclient_prompt_for_password {
     if [[ -z "$p_password" ]] ; then
       printf "\nEnter password"
-      [[ -n "$accountTag" ]] && printf " for %s %s %s %s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "$(getValue "$sessionFOLIOUSER")"
+      [[ -n "$accountTag" ]] && printf " for %s %s %s %s" "$accountTag" "$p_foliouser" "$p_foliotenant" "$p_foliohost"|| printf " for %s" "$(__okclient_get_value "$sessionFOLIOUSER")"
       printf ": "
       read -r -s password
       if [[ -z "$password" ]]; then
@@ -258,9 +257,9 @@ function __okclient_prompt_for_password {
       else
         printf "\n"
       fi
-      setValue "$sessionPASSWORD" "$password"
+      __okclient_set_value "$sessionPASSWORD" "$password"
     else
-      setValue "$sessionPASSWORD" "$p_password"
+      __okclient_set_value "$sessionPASSWORD" "$p_password"
     fi
     return 0
 }
@@ -269,7 +268,7 @@ function __okclient_select_account_and_log_in {
   if ( $gotAccountMatchString || $gotAuthParameters ); then
     # received request to login
     __okclient_get_set_auth_env_values &&  __okclient_prompt_for_password && __okclient_get_token
-  elif  [[ -z "$(getValue "$sessionTOKEN")" ]]; then
+  elif  [[ -z "$(__okclient_get_value "$sessionTOKEN")" ]]; then
     # has no existing login
     if [[ -z "$p_endpoint" ]] && $viewContext ; then
       return
@@ -334,8 +333,8 @@ function __okclient_select_endpoint {
 
 # Check token expiration and issue new login if expired
 function __okclient_maybe_refresh_token {
-  if [[ "$(TZ=UTC date '+%Y-%m-%dT%H:%M:%S')" > "$(getValue "$sessionEXPIRATION")" ]]; then
-    ($viewContext) && echo "Token expired $(getValue "$sessionEXPIRATION"). It's $(TZ=UTC date '+%Y-%m-%dT%H:%M:%S') now. Renewing login before request."
+  if [[ "$(TZ=UTC date '+%Y-%m-%dT%H:%M:%S')" > "$(__okclient_get_value "$sessionEXPIRATION")" ]]; then
+    ($viewContext) && echo "Token expired $(__okclient_get_value "$sessionEXPIRATION"). It's $(TZ=UTC date '+%Y-%m-%dT%H:%M:%S') now. Renewing login before request."
     __okclient_get_token
   fi
 }
@@ -344,7 +343,7 @@ function __okclient_compose_run_curl_request {
 
     # URL. If extension doesn't start with '/' or '?', insert '/'
     [[ -n "$endpointExtension" ]] && [[ ! "$endpointExtension" =~ ^[\?/]+ ]] && endpointExtension="/$endpointExtension"
-    url="$(getValue "$sessionFOLIOHOST")"/"$endpoint""$endpointExtension"
+    url="$(__okclient_get_value "$sessionFOLIOHOST")"/"$endpoint""$endpointExtension"
     # Maybe set record limit to 1.000.000 ~ "no limit"
     if ( $noRecordLimit ); then
       if [[ $url == *"?"* ]]; then
@@ -355,8 +354,8 @@ function __okclient_compose_run_curl_request {
     fi
     # Define headers following potential RTR refresh
     __okclient_maybe_refresh_token
-    tokenHeader="X-okapi-token:$(getValue "$sessionTOKEN")"
-    tenantHeader="X-okapi-tenant:$(getValue "$sessionFOLIOTENANT")"
+    tokenHeader="X-okapi-token:$(__okclient_get_value "$sessionTOKEN")"
+    tenantHeader="X-okapi-tenant:$(__okclient_get_value "$sessionFOLIOTENANT")"
     contentTypeHeader="Content-type:$contentType"
 
     curlRequest="curl -w \n%{response_code} -s -H$tenantHeader -H$tokenHeader -H$contentTypeHeader $method"
@@ -396,7 +395,7 @@ function __okclient_compose_run_curl_request {
       response=$($curlRequest)
     fi
     # Grab HTTP status code to env var from last line of response
-    setValue "$sessionHTTPStatus" "$(tail -n 1 <<< "$response")"
+    __okclient_set_value "$sessionHTTPStatus" "$(tail -n 1 <<< "$response")"
     # Remove last line of response, the status code
     response=$(sed '$d' <<< "$response")
 
@@ -424,7 +423,7 @@ function __okclient_compose_run_curl_request {
 function ok_got_folio_session {
   session=${1:+$1"_"}
   __okclient_define_session_env_vars
-  if [[ -n "$(getValue "$sessionTOKEN")" ]] && [[ -n "$(getValue "$sessionFOLIOTENANT")" ]] && [[ -n "$(getValue "$sessionFOLIOUSER")" ]] &&  [[ -n "$(getValue "$sessionFOLIOHOST")" ]] ; then
+  if [[ -n "$(__okclient_get_value "$sessionTOKEN")" ]] && [[ -n "$(__okclient_get_value "$sessionFOLIOTENANT")" ]] && [[ -n "$(__okclient_get_value "$sessionFOLIOUSER")" ]] &&  [[ -n "$(__okclient_get_value "$sessionFOLIOHOST")" ]] ; then
     return 0
   else
     return 1
@@ -523,17 +522,17 @@ function OK {
 
   if ( $exit ); then
     # Clear login credentials and stop on -x
-    if [[ -z "$(getValue "$sessionTOKEN")" ]]; then
+    if [[ -z "$(__okclient_get_value "$sessionTOKEN")" ]]; then
      printf "\nI was asked to log out but there was already no access token found. Clearing env vars and exiting.\n\n"
     else
-     printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "$(getValue "$sessionFOLIOUSER")" "$(getValue "$sessionFOLIOTENANT")" "$(getValue "$sessionFOLIOHOST")"
+     printf "\nLogging out from FOLIO (forgetting access info for %s to %s@%s).\n\n" "$(__okclient_get_value "$sessionFOLIOUSER")" "$(__okclient_get_value "$sessionFOLIOTENANT")" "$(__okclient_get_value "$sessionFOLIOHOST")"
     fi
     __okclient_clear_auth_cache
   else
-    if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "$(getValue "$sessionTOKEN")" ]]; then
+    if ( $gotAccountMatchString || $gotAuthParameters ) || [[ -z "$(__okclient_get_value "$sessionTOKEN")" ]]; then
       __okclient_select_account_and_log_in
     fi
-    if [[ -n "$(getValue "$sessionTOKEN")" ]]; then
+    if [[ -n "$(__okclient_get_value "$sessionTOKEN")" ]]; then
       __okclient_select_endpoint
     else
       return 1
