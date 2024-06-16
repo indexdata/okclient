@@ -92,9 +92,15 @@ function __okclient_get_non_expiry_token {
       return || exit 1
   else
     # Extract token from response header
+    echo "DEBUG: set sessionTOKEN ..."
     setValue "$sessionTOKEN" "$(echo "$respHeaders" | grep x-okapi-token | tr -d '\r' | cut -d " " -f2)"
+    printf "DEBUG: setValue() result=%s\n" "$?"
+    printf "DEBUG: sessionTOKEN=%s\n" "$(getValue "$sessionTOKEN")"
     # shellcheck disable=SC2116
+    echo "DEBUG: set sessionEXPIRATION ..."
     setValue "$sessionEXPIRATION" "$(echo "2100-01-01T00:00:00Z")"
+    printf "DEBUG: setValue() result=%s\n" "$?"
+    printf "DEBUG: sessionEXPIRATION=%s\n" "$(getValue "$sessionEXPIRATION")"
     ( $viewContext ) && printf "\n\nLogin response headers:\n\n%s\nExpiration: %s\n" "$respHeaders" "$(getValue "$sessionEXPIRATION")"
   fi
   return 0
