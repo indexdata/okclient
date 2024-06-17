@@ -77,7 +77,7 @@ function __okclient_get_non_expiry_token {
   local respHeaders
   local statusHeader
   respHeadersFile="h-$(uuidgen).txt"
-  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: $(getValue "$sessionFOLIOTENANT")"  -d "{ \"username\": \"$(getValue "$sessionFOLIOUSER")\", \"password\": \"$(getValue "$sessionPASSWORD")\"}" "$(getValue "$sessionFOLIOHOST")/authn/login")
+  authResponse=$(curl -sS -D "${respHeadersFile}" -X POST -H "Content-type: application/json" -H "Accept: application/json" -H "X-Okapi-Tenant: $(getValue "$sessionFOLIOTENANT")"  -d "{ \"username\": \"$(getValue "$sessionFOLIOUSER")\", \"password\": \"$(getValue "$sessionPASSWORD")\"}" $additionalCurlOptions "$(getValue "$sessionFOLIOHOST")/authn/login")
   respHeaders=$(<"$respHeadersFile")
   rm "$respHeadersFile"
   statusHeader=$(echo "${respHeaders}" | head -1)
