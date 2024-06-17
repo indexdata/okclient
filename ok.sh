@@ -60,7 +60,7 @@ function __okclient_show_help {
 function setValue() {
   variableName=$1
   val=$2
-  IFS= read -r -d '' "$variableName" <<< "$val"
+  printf -v "$variableName" "$val"
 }
 
 # Retrieves value of dynamically named session variable (stripped of trailing newline)
