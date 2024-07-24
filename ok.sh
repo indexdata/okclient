@@ -27,6 +27,7 @@ function __okclient_show_help {
     printf "  -c <content type>:            defaults to application/json\n"
     printf "  -s                            silences OK logging (curl requests are always done with -s)\n"
     printf "  -o <additional curl options>  add curl options like -v, -o, etc\n"
+    printf "                                To set a header using this option:  -o \"-HAccept:application/json\"\n"
     printf "  -j <jq script>:               a jq command to apply to the Okapi response, ignored with -f or -d\n"
     printf "  -v                            shows current context and logs the curl request \n"
     printf "                                 (does not invoke curl -v, use -o \"-v\" for that)\n"
