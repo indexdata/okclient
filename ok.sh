@@ -453,7 +453,7 @@ function OK {
   # Initialize parameters
   accountMatchString=""; gotAccountMatchString=false
   p_foliouser=""; p_foliotenant=""; p_foliohost=""; p_password=""; gotAuthParameters=false
-  session=""
+  session=
   endpointMatchString=""; p_endpoint=""; endpoint=""; endpointExtension=""; query=""; noRecordLimit=false
   method=""
   contentType=""
