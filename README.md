@@ -11,6 +11,8 @@ Yet another curl based FOLIO client - for inclusion as submodule in select custo
 
     source ok.sh;  OK [options] [a FOLIO API]
 
+Note: The client must be used with the bash shell. Be sure to start `bash` before sourcing the `ok.sh` file.
+
 Get help text
 
     OK -?
@@ -67,11 +69,11 @@ For example, using the sessions above, to copy material types from FOLIO snapsho
 
 Explanation for the options and keywords used in this example:
 
-* `-S` chooses the session for the request
-* `-n` means no limit on records
-* `-s` simply invokes cURLs `-s`
-* `-j` invokes `jq` on the response (see next section regarding `jq` integration)
-* `-d` is cURLs `--data-binary`
+- `-S` chooses the session for the request
+- `-n` means no limit on records
+- `-s` simply invokes cURLs `-s`
+- `-j` invokes `jq` on the response (see next section regarding `jq` integration)
+- `-d` is cURLs `--data-binary`
 
 ### Light integration of jq
 
@@ -85,15 +87,16 @@ One could just pipe the output of OK to `jq` instead as
 in `OK instance-storage/instances -s | jq -r '.instances[].title'`, but output from OK other than the response (for
 example an interactive login) would then go to `jq` as well, that's all.
 
-The `-j` option additional provides a couple of shorthands for some `jq` query instructions. 
+The `-j` option additional provides a couple of shorthands for some `jq` query instructions.
 
 #### Keyword `RECORDS`: make `jq` retrieve arrays
-`RECORDS` will be translated into an instruction to retrieve array(s) from a JSON object. This can be used to get the records array from a FOLIO API collection response generically -- without necessarily knowing the name of the array, that is. 
+
+`RECORDS` will be translated into an instruction to retrieve array(s) from a JSON object. This can be used to get the records array from a FOLIO API collection response generically -- without necessarily knowing the name of the array, that is.
 
     OK material-types -j 'RECORDS[].name'
 
 This request will get the material types record array (`mtypes`) from the material-types response.
-The example is equivalent to  
+The example is equivalent to
 
     OK material-types -j '.mtypes[].name'  # or
     OK material-types -j '.[keys[]] | (select(type=="array"))[].name'
@@ -107,12 +110,13 @@ With `RECORDS` it is thus possible to iterate over APIs and generically get thei
       done
     done
 
-#### Keyword `PROPS`: make `jq` retrieve names and types of properties 
+#### Keyword `PROPS`: make `jq` retrieve names and types of properties
+
 `PROPS` will be translated into an instruction to retrieve top level property names and type from a JSON object, for example:
 
     OK instance-storage/instances -j 'RECORDS[0] | PROPS'
 
-This request will display the names and types of properties in the first instance record of the collection. The example is equivalent to 
+This request will display the names and types of properties in the first instance record of the collection. The example is equivalent to
 
     OK instance-storage/instances -j '.instances[0] | keys[] as $k | "\($k), \(.[$k] | type)"'
 
@@ -130,15 +134,15 @@ POST will fail:
       OK -S LOCAL -d "$record" holdings-storage/holdings
     done
 
-The example above GETs the records one object at a time; see example 4 for the more efficient way to export/import 
+The example above GETs the records one object at a time; see example 4 for the more efficient way to export/import
 
 #### Example 2, bulk changing user email addresses
 
 Export active users but assign all a new email to prevent spamming when testing features that send emails.
 
     for id in $(OK -S SNAPSHOT users -n -q "active=true" -j 'RECORDS[].id'); do
-      record=$(OK -S SNAPSHOT -s "users/$id" -j 'if .personal?.email != null 
-                                                      then .personal.email="name@email.com" 
+      record=$(OK -S SNAPSHOT -s "users/$id" -j 'if .personal?.email != null
+                                                      then .personal.email="name@email.com"
                                                       else . end')
       OK -S LOCAL -d "$record" users
     done
@@ -151,18 +155,17 @@ Update a loan policy with a due date interval measured in minutes
       "$(OK loan-policy-storage/loan-policies/4cdff544-b410-4301-a2fc-1aa918806860 \
                                       -j '.loansPolicy.period.intervalId="Minutes"')"
 
-
 #### Example 4, exporting Inventory reference data from one FOLIO installation to another
 
     for api in location-units/institutions location-units/campuses location-units/libraries locations \
       instance-note-types alternative-title-types loan-types material-types contributor-types instance-statuses \
       identifier-types holdings-types holdings-sources instance-types modes-of-issuance instance-formats nature-of-content-terms \
       contributor-name-types electronic-access-relationships instance-relationship-types ill-policies; do
-        
+
       while read -r jsonLine; do
         OK -S LOCAL -d "${jsonLine}" $api -s
       done <<< "$(OK -S SNAPSHOT $api -n -s | jq -c '.[keys[0]][]')"
-    
+
     done
 
-This works fine for smaller and medium-sized record sets but may not be optimal if exporting record sets containing hundreds of thousands of records. APIs might indeed not support downloading that many records per request. 
+This works fine for smaller and medium-sized record sets but may not be optimal if exporting record sets containing hundreds of thousands of records. APIs might indeed not support downloading that many records per request.
