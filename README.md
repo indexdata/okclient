@@ -169,3 +169,9 @@ Update a loan policy with a due date interval measured in minutes
     done
 
 This works fine for smaller and medium-sized record sets but may not be optimal if exporting record sets containing hundreds of thousands of records. APIs might indeed not support downloading that many records per request.
+
+#### Example 5, adding a permission to a user when you know the username (for example) and the permission name
+
+    OK perms/users/"$(OK perms/users -q userId=="$(OK users -q 'username=="<the username>"' -j 'RECORDS[].id')" -j 'RECORDS[].id')"/permissions \
+      -d '{"permissionName": "<the permission name>"}'
+
